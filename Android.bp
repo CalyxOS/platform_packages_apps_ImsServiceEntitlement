@@ -1,4 +1,3 @@
-//
 // Copyright (C) 2021 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +15,42 @@
 genrule {
   name: "statslog-imsentitlement-java-gen",
   tools: ["stats-log-api-gen"],
-  cmd: "$(location stats-log-api-gen) --java $(out) --module imsentitlement --javaPackage com.android.imsentitlement --javaClass ImsentitlementStatsLog",
-  out: ["com/android/imsentitlement/ImsentitlementStatsLog.java"],
+  cmd: "$(location stats-log-api-gen) --java $(out) --module imsentitlement --javaPackage com.android.imsserviceentitlement --javaClass ImsServiceEntitlementStatsLog",
+  out: ["com/android/imsserviceentitlement/ImsServiceEntitlementStatsLog.java"],
+}
+
+android_app {
+    name: "ImsServiceEntitlement",
+
+    static_libs: [
+        "androidx.annotation_annotation",
+        "android-support-v4",
+        "androidx.legacy_legacy-support-v4",
+        "service-entitlement",
+        "setupdesign",
+        "guava",
+    ],
+
+    libs: [
+        "auto_value_annotations",
+    ],
+
+    plugins: ["auto_value_plugin"],
+
+    resource_dirs: ["res"],
+
+    srcs: [
+        "src/**/*.java",
+        ":statslog-imsentitlement-java-gen",
+    ],
+
+    optimize: {
+        proguard_flags_files: ["proguard.flags"],
+    },
+
+    product_specific: true,
+    sdk_version: "system_current",
+    certificate: "platform",
+    privileged: true,
+    required: ["privapp_whitelist_com.android.imsserviceentitlement"],
 }
