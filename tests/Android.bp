@@ -15,6 +15,7 @@
 
 android_test {
     name: "ImsServiceEntitlementTests",
+    instrumentation_for: "ImsServiceEntitlement",
     srcs: ["src/**/*.java"],
     manifest: "AndroidManifest.xml",
     resource_dirs: [],
