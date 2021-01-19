@@ -22,47 +22,57 @@ import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlNode;
 import com.android.imsserviceentitlement.utils.XmlDoc;
 
 import com.google.auto.value.AutoValue;
+import com.google.common.annotations.VisibleForTesting;
 
 /**
  * Implementation of WFC entitlement status and server data availability for TS.43 entitlement
  * solution.
  */
 @AutoValue
+@VisibleForTesting
 public abstract class Ts43VowifiStatus implements VowifiStatus {
-    static class EntitlementStatus {
-        private EntitlementStatus() {}
+    /** The entitlement status of vowifi service. */
+    @VisibleForTesting
+    public static class EntitlementStatus {
+        public EntitlementStatus() {}
 
-        static final int DISABLED = 0;
-        static final int ENABLED = 1;
-        static final int INCOMPATIBLE = 2;
-        static final int PROVISIONING = 3;
+        public static final int DISABLED = 0;
+        public static final int ENABLED = 1;
+        public static final int INCOMPATIBLE = 2;
+        public static final int PROVISIONING = 3;
     }
 
-    static class AddrStatus {
-        private AddrStatus() {}
+    /** The emergency address status of vowifi service. */
+    @VisibleForTesting
+    public static class AddrStatus {
+        public AddrStatus() {}
 
-        static final int NOT_AVAILABLE = 0;
-        static final int AVAILABLE = 1;
-        static final int NOT_REQUIRED = 2;
-        static final int IN_PROGRESS = 3;
+        public static final int NOT_AVAILABLE = 0;
+        public static final int AVAILABLE = 1;
+        public static final int NOT_REQUIRED = 2;
+        public static final int IN_PROGRESS = 3;
     }
 
-    static class TcStatus {
-        private TcStatus() {}
+    /** The terms and condition status of vowifi service. */
+    @VisibleForTesting
+    public static class TcStatus {
+        public TcStatus() {}
 
-        static final int NOT_AVAILABLE = 0;
-        static final int AVAILABLE = 1;
-        static final int NOT_REQUIRED = 2;
-        static final int IN_PROGRESS = 3;
+        public static final int NOT_AVAILABLE = 0;
+        public static final int AVAILABLE = 1;
+        public static final int NOT_REQUIRED = 2;
+        public static final int IN_PROGRESS = 3;
     }
 
-    static class ProvStatus {
-        private ProvStatus() {}
+    /** The provision status of vowifi service. */
+    @VisibleForTesting
+    public static class ProvStatus {
+        public ProvStatus() {}
 
-        static final int NOT_PROVISIONED = 0;
-        static final int PROVISIONED = 1;
-        static final int NOT_REQUIRED = 2;
-        static final int IN_PROGRESS = 3;
+        public static final int NOT_PROVISIONED = 0;
+        public static final int PROVISIONED = 1;
+        public static final int NOT_REQUIRED = 2;
+        public static final int IN_PROGRESS = 3;
     }
 
     /** The entitlement status of vowifi service. */
