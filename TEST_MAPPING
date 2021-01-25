@@ -1,0 +1,12 @@
+{
+  "presubmit": [
+    {
+      "name": "ImsServiceEntitlementTests"
+    }
+  ],
+  "postsubmit": [
+    {
+      "name": "ImsServiceEntitlementTests"
+    }
+  ]
+}
