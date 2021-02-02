@@ -16,13 +16,14 @@
 
 package com.android.imsserviceentitlement.ts43;
 
+import androidx.annotation.VisibleForTesting;
+
 import com.android.imsserviceentitlement.entitlement.VowifiStatus;
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlAttributes;
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlNode;
 import com.android.imsserviceentitlement.utils.XmlDoc;
 
 import com.google.auto.value.AutoValue;
-import com.google.common.annotations.VisibleForTesting;
 
 /**
  * Implementation of WFC entitlement status and server data availability for TS.43 entitlement
