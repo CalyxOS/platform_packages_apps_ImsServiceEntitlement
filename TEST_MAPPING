@@ -1,12 +1,12 @@
 {
   "presubmit": [
     {
-      "name": "ImsServiceEntitlementTests"
+      "name": "ImsServiceEntitlementUnitTests"
     }
   ],
   "postsubmit": [
     {
-      "name": "ImsServiceEntitlementTests"
+      "name": "ImsServiceEntitlementUnitTests"
     }
   ]
 }
