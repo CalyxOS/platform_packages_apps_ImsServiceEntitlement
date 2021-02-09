@@ -19,9 +19,9 @@ genrule {
   out: ["com/android/imsserviceentitlement/ImsServiceEntitlementStatsLog.java"],
 }
 
-android_app {
-    name: "ImsServiceEntitlement",
-
+// Library isn't proguard optimized, suitable for unit test
+android_library {
+    name: "ImsServiceEntitlementLib",
     static_libs: [
         "androidx.annotation_annotation",
         "android-support-v4",
@@ -30,24 +30,26 @@ android_app {
         "setupdesign",
         "guava",
     ],
-
     libs: [
         "auto_value_annotations",
     ],
-
     plugins: ["auto_value_plugin"],
-
     resource_dirs: ["res"],
-
     srcs: [
         "src/**/*.java",
         ":statslog-imsentitlement-java-gen",
     ],
+    sdk_version: "system_current",
+}
 
+android_app {
+    name: "ImsServiceEntitlement",
+    static_libs: [
+        "ImsServiceEntitlementLib",
+    ],
     optimize: {
         proguard_flags_files: ["proguard.flags"],
     },
-
     product_specific: true,
     sdk_version: "system_current",
     certificate: "platform",
