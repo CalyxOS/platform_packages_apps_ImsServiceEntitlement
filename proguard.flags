@@ -2,7 +2,3 @@
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
-# Preserve fields used in test
--keep public abstract class com.android.imsserviceentitlement.ts43.Ts43VowifiStatus {
-    public *;
-}

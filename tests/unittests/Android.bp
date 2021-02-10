@@ -14,12 +14,12 @@
 // limitations under the License.
 
 android_test {
-    name: "ImsServiceEntitlementTests",
-    instrumentation_for: "ImsServiceEntitlement",
+    name: "ImsServiceEntitlementUnitTests",
     srcs: ["src/**/*.java"],
     manifest: "AndroidManifest.xml",
     resource_dirs: [],
     static_libs: [
+        "ImsServiceEntitlementLib",
         "androidx.test.core",
         "androidx.test.ext.junit",
         "androidx.test.rules",
