@@ -137,8 +137,10 @@ public class WfcActivationApi {
         CarrierConfigManager carrierConfigManager =
                 (CarrierConfigManager) context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         PersistableBundle config = carrierConfigManager.getConfigForSubId(subId);
-        String aseUrl =
-                config.getString(CarrierConfigManager.ImsServiceEntitlement.KEY_AES_URL_STRING);
-        return CarrierConfig.builder().setServerUrl(aseUrl).build();
+        String entitlementServiceUrl =
+                config.getString(
+                        CarrierConfigManager.ImsServiceEntitlement.KEY_ENTITLEMENT_SERVER_URL_STRING
+                );
+        return CarrierConfig.builder().setServerUrl(entitlementServiceUrl).build();
     }
 }
