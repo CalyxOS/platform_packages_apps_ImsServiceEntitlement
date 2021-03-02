@@ -52,7 +52,6 @@ android_app {
     },
     product_specific: true,
     sdk_version: "system_current",
-    certificate: "platform",
     privileged: true,
     required: ["privapp_whitelist_com.android.imsserviceentitlement"],
 }
