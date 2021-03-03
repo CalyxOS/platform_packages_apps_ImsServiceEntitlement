@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 genrule {
   name: "statslog-imsentitlement-java-gen",
   tools: ["stats-log-api-gen"],
@@ -52,7 +56,6 @@ android_app {
     },
     product_specific: true,
     sdk_version: "system_current",
-    certificate: "platform",
     privileged: true,
     required: ["privapp_whitelist_com.android.imsserviceentitlement"],
 }
