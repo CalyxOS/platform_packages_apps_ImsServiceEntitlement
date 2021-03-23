@@ -42,7 +42,7 @@ import javax.xml.parsers.ParserConfigurationException;
 
 /** Wrap the raw content and parse it into nodes. */
 public class XmlDoc {
-    private static final String TAG = "WfcActivationActivity.XmlDoc";
+    private static final String TAG = "IMSSE-XmlDoc";
 
     private static final String NODE_CHARACTERISTIC = "characteristic";
     private static final String NODE_PARM = "parm";

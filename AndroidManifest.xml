@@ -36,5 +36,30 @@
             android:screenOrientation="nosensor"
             android:theme="@style/SudThemeGlif.Light">
         </activity>
+
+        <!-- START: FCM related components -->
+        <!-- The FcmReceiver is in GMS client lib; need to declare it here to receive FCM. -->
+        <receiver
+            android:name=".fcm.FcmRegistrationReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".fcm.FcmService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".fcm.FcmRegistrationService"
+            android:exported="true"
+            android:permission="android.permission.BIND_JOB_SERVICE">
+        </service>
+        <!-- END: FCM related components -->
     </application>
 </manifest>
