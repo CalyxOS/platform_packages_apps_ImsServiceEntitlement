@@ -79,14 +79,6 @@ public abstract class EntitlementResult {
         public abstract Builder setTermsAndConditionsWebUrl(String termsAndConditionsWebUrl);
     }
 
-    /** Returns failure EntitlementResult. */
-    public static EntitlementResult getFailureResult() {
-        return builder()
-                .setSuccess(false)
-                .setVowifiStatus(INACTIVE_VOWIFI_STATUS)
-                .build();
-    }
-
     @Override
     public final String toString() {
         StringBuilder builder = new StringBuilder("EntitlementResult{");

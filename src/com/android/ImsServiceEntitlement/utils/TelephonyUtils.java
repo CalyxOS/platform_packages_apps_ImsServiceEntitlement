@@ -20,18 +20,20 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.TimeZone;
+import com.google.common.collect.ImmutableSet;
+
+import java.util.List;
 
 /** This class implements Telephony helper methods. */
 public class TelephonyUtils {
-    public static final String TAG = TelephonyUtils.class.getSimpleName();
+    public static final String TAG = "IMSSE-TelephonyUtils";
 
     private final ConnectivityManager connectivityManager;
     private final TelephonyManager telephonyManager;
@@ -133,5 +135,61 @@ public class TelephonyUtils {
         }
         Log.d(TAG, "Can't find actived subscription for " + subId);
         return SubscriptionManager.INVALID_SIM_SLOT_INDEX;
+    }
+
+    /** Returns carrier config for the {@code subId}. */
+    private static PersistableBundle getConfigForSubId(Context context, int subId) {
+        CarrierConfigManager carrierConfigManager =
+                context.getSystemService(CarrierConfigManager.class);
+        PersistableBundle carrierConfig = carrierConfigManager.getConfigForSubId(subId);
+        if (carrierConfig == null) {
+            Log.d(TAG, "getDefaultConfig");
+            carrierConfig = CarrierConfigManager.getDefaultConfig();
+        }
+        return carrierConfig;
+    }
+
+    /**
+     * Returns FCM sender id for the {@code subId} or a default empty string if it is not available.
+     */
+    public static String getFcmSenderId(Context context, int subId) {
+        return getConfigForSubId(context, subId).getString(
+                CarrierConfigManager.ImsServiceEntitlement.KEY_FCM_SENDER_ID_STRING,
+                ""
+        );
+    }
+
+    /**
+     * Returns entitlement server url for the {@code subId} or
+     * a default empty string if it is not available.
+     */
+    public static String getEntitlementServerUrl(Context context, int subId) {
+        return getConfigForSubId(context, subId).getString(
+                CarrierConfigManager.ImsServiceEntitlement.KEY_ENTITLEMENT_SERVER_URL_STRING,
+                ""
+        );
+    }
+
+    /** Returns SubIds which support FCM. */
+    public static ImmutableSet<Integer> getSubIdsWithFcmSupported(Context context) {
+        SubscriptionManager subscriptionManager =
+                context.getSystemService(SubscriptionManager.class);
+        List<SubscriptionInfo> infos = subscriptionManager.getActiveSubscriptionInfoList();
+        if (infos == null) {
+            return ImmutableSet.of();
+        }
+
+        ImmutableSet.Builder<Integer> builder = ImmutableSet.builder();
+        for (SubscriptionInfo info : infos) {
+            int subId = info.getSubscriptionId();
+            if (isFcmPushNotificationSupported(context, subId)) {
+                builder.add(subId);
+            }
+        }
+        return builder.build();
+    }
+
+    private static boolean isFcmPushNotificationSupported(Context context, int subId) {
+        return !TelephonyUtils.getFcmSenderId(context, subId).isEmpty();
     }
 }

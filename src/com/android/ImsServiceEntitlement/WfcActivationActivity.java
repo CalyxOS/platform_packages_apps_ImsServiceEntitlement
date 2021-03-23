@@ -24,13 +24,13 @@ import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.view.KeyEvent;
 
-import com.google.android.setupdesign.util.ThemeResolver;
-
 import androidx.annotation.StringRes;
+
+import com.google.android.setupdesign.util.ThemeResolver;
 
 /** The UI for WFC activation. */
 public class WfcActivationActivity extends FragmentActivity implements WfcActivationUi {
-    private static final String TAG = "WfcActivationActivity";
+    private static final String TAG = "IMSSE-WfcActivationActivity";
 
     // Dependencies
     private WfcActivationController wfcActivationController;

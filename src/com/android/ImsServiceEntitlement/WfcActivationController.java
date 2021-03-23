@@ -19,8 +19,8 @@ package com.android.imsserviceentitlement;
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED;
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__CANCELED;
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED;
-import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__INCOMPATIBLE;
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
+import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__INCOMPATIBLE;
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__SUCCESSFUL;
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__TIMEOUT;
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNEXPECTED_RESULT;
@@ -37,6 +37,10 @@ import android.os.CountDownTimer;
 import android.text.TextUtils;
 import android.util.Log;
 
+import androidx.annotation.MainThread;
+import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
+
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
 import com.android.imsserviceentitlement.entitlement.VowifiStatus;
 import com.android.imsserviceentitlement.utils.ImsUtils;
@@ -44,17 +48,13 @@ import com.android.imsserviceentitlement.utils.TelephonyUtils;
 
 import java.time.Duration;
 
-import androidx.annotation.MainThread;
-import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
-
 /**
  * The driver for WFC activation workflow: go/vowifi-entitlement-status-analysis.
  *
  * <p>One {@link WfcActivationActivity} owns one and only one controller instance.
  */
 public class WfcActivationController {
-    private static final String TAG = "WfcActivationActivity";
+    private static final String TAG = "IMSSE-WfcActivationController";
 
     // Entitlement status update retry
     private static final int ENTITLEMENT_STATUS_UPDATE_RETRY_MAX = 6;
@@ -234,7 +234,6 @@ public class WfcActivationController {
     private void handleEntitlementStatusForActivation(EntitlementResult result) {
         VowifiStatus vowifiStatus = result.getVowifiStatus();
         if (vowifiStatus.vowifiEntitled()) {
-            activationApi.onWfcSettingChanged(true, result);
             finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__SUCCESSFUL);
             activationUi.setResultAndFinish(Activity.RESULT_OK);
         } else {
@@ -281,7 +280,6 @@ public class WfcActivationController {
             if (vowifiStatus.incompatible()) {
                 showErrorUi(R.string.failure_contact_carrier);
                 turnOffWfc(() -> {
-                    activationApi.onWfcSettingChanged(false, result);
                     finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__INCOMPATIBLE);
                 });
             } else {
@@ -311,7 +309,6 @@ public class WfcActivationController {
     private void handleEntitlementStatusAfterActivation(EntitlementResult result) {
         VowifiStatus vowifiStatus = result.getVowifiStatus();
         if (vowifiStatus.vowifiEntitled()) {
-            activationApi.onWfcSettingChanged(true, result);
             activationUi.setResultAndFinish(Activity.RESULT_OK);
             finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__SUCCESSFUL);
         } else {
@@ -349,7 +346,6 @@ public class WfcActivationController {
         } else if (vowifiStatus.serverDataMissing()) {
             // Some carrier allows de-activating in updating flow.
             turnOffWfc(() -> {
-                activationApi.onWfcSettingChanged(false, result);
                 finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED);
                 activationUi.setResultAndFinish(Activity.RESULT_OK);
             });
