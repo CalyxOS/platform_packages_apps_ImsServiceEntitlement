@@ -29,8 +29,7 @@ import androidx.annotation.Nullable;
 
 /** A helper class for IMS relevant APIs with subscription id. */
 public class ImsUtils {
-    private static final String TAG = "WfcActivationActivity";
-    private static final String PACKAGE_NAME = "com.google.android.wfcactivation";
+    private static final String TAG = "IMSSE-ImsUtils";
 
     private final CarrierConfigManager carrierConfigManager;
     private final ImsMmTelManager imsMmTelManager;
@@ -107,6 +106,17 @@ public class ImsUtils {
         }
 
         return null;
+    }
+
+    /** Returns whether WFC is enabled by user for current subId */
+    public boolean isWfcEnabledByUser() {
+        try {
+            return imsMmTelManager.isVoWiFiSettingEnabled();
+        } catch (RuntimeException e) {
+            // ignore this exception, possible exception should be NullPointerException or
+            // RemoteException.
+        }
+        return false;
     }
 
     public static void turnOffWfc(ImsUtils imsUtils, Runnable action) {

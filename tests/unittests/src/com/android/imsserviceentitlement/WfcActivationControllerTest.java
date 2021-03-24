@@ -174,7 +174,6 @@ public class WfcActivationControllerTest {
 
         mWfcActivationController.evaluateEntitlementStatus();
 
-        verify(mActivationApi).onWfcSettingChanged(true, mEntitlementResult);
         verify(mActivationUi).setResultAndFinish(Activity.RESULT_OK);
     }
 
@@ -256,7 +255,6 @@ public class WfcActivationControllerTest {
 
         mWfcActivationController.reevaluateEntitlementStatus();
 
-        verify(mActivationApi).onWfcSettingChanged(true, mEntitlementResult);
         verify(mActivationUi).setResultAndFinish(Activity.RESULT_OK);
     }
 

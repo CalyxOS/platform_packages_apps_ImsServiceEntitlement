@@ -17,27 +17,29 @@
 package com.android.imsserviceentitlement;
 
 import android.content.Context;
-import android.os.PersistableBundle;
-import android.telephony.CarrierConfigManager;
 import android.text.TextUtils;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
+
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
+import com.android.imsserviceentitlement.fcm.FcmTokenStore;
+import com.android.imsserviceentitlement.fcm.FcmUtils;
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlAttributes;
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlNode;
 import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus;
+import com.android.imsserviceentitlement.utils.TelephonyUtils;
 import com.android.imsserviceentitlement.utils.XmlDoc;
 import com.android.libraries.entitlement.CarrierConfig;
 import com.android.libraries.entitlement.ServiceEntitlement;
 import com.android.libraries.entitlement.ServiceEntitlementException;
 import com.android.libraries.entitlement.ServiceEntitlementRequest;
 
-import androidx.annotation.Nullable;
-import androidx.annotation.VisibleForTesting;
-
 /** Implementation of the entitlement API. */
 public class WfcActivationApi {
-    private static final String TAG = "WfcActivationActivity";
+    private static final String TAG = "IMSSE-WfcActivationApi";
+
     private static final String JS_CONTROLLER_NAME = "VoWiFiWebServiceFlow";
 
     private final Context context;
@@ -75,15 +77,6 @@ public class WfcActivationApi {
         return JS_CONTROLLER_NAME;
     }
 
-    /**
-     * Runs when WFC is going to be turned ON/OFF.
-     *
-     * @param setting {@code true} for WFC ON, {@code false} for WFC OFF.
-     * @param entitlement The entitlement check result that results in WFC setting change, returned
-     * by {@code #checkEntitlementStatus()}.
-     */
-    public void onWfcSettingChanged(boolean setting, @Nullable EntitlementResult entitlement) {}
-
     /** Query for status of {@link AppId#VOWIFI}). */
     @VisibleForTesting
     EntitlementResult voWifiEntitlementStatus() {
@@ -93,8 +86,8 @@ public class WfcActivationApi {
         if (!TextUtils.isEmpty(mCachedAccessToken)) {
             requestBuilder.setAuthenticationToken(mCachedAccessToken);
         }
-        // TODO(b/177499703): Add FCM support and remove this hard-coded token.
-        requestBuilder.setNotificationToken(context.getString(R.string.fcm_token));
+        FcmUtils.fetchFcmToken(context, subId);
+        requestBuilder.setNotificationToken(FcmTokenStore.getToken(context, subId));
         // Set fake device info to avoid leaking
         requestBuilder.setTerminalVendor("vendorX");
         requestBuilder.setTerminalModel("modelY");
@@ -134,13 +127,7 @@ public class WfcActivationApi {
     }
 
     private CarrierConfig getCarrierConfig(Context context) {
-        CarrierConfigManager carrierConfigManager =
-                (CarrierConfigManager) context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        PersistableBundle config = carrierConfigManager.getConfigForSubId(subId);
-        String entitlementServiceUrl =
-                config.getString(
-                        CarrierConfigManager.ImsServiceEntitlement.KEY_ENTITLEMENT_SERVER_URL_STRING
-                );
+        String entitlementServiceUrl = TelephonyUtils.getEntitlementServerUrl(context, subId);
         return CarrierConfig.builder().setServerUrl(entitlementServiceUrl).build();
     }
 }

@@ -26,7 +26,7 @@ import android.util.Log;
  * <p>Must match with WifiCallingSettings.
  */
 public final class ActivityConstants {
-    public static final String TAG = "WfcActivationActivity";
+    public static final String TAG = "IMSSE-ActivityConstants";
 
     /** Constants shared by WifiCallingSettings */
     public static final String EXTRA_LAUNCH_CARRIER_APP = "EXTRA_LAUNCH_CARRIER_APP";

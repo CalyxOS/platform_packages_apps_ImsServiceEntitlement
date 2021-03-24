@@ -16,6 +16,14 @@
 -->
 
 <resources>
-    <!-- A test FCM token -->
-    <string name="fcm_token" translatable="false">erqKraIJ2mU%3AAPA91bHhjawbD_JHyIqkDZmpr8POX9HldCRTnapq_0NrhhBvODGwxNVHaT1d36r_OsZfGbRDa3HnO9VsMx09LNDtCSna3M2MoCGTIY6QIbHamOM2QnUSZYZhqJbsoVlsesP5DfGcw9sP</string>
+    <!-- Required for Firebase functionality to initialize FirebaseApp instance.
+         These parameters can be found on this page:
+         https://firebase.google.com/support/privacy/init-options
+    -->
+    <!-- Project ID -->
+    <string name="fcm_project_id" translatable="false">wfcactivation-e5dd9</string>
+    <!-- App ID -->
+    <string name="fcm_app_id" translatable="false">1:202982214007:android:57f812ebf3faca7cc33972</string>
+    <!-- API Key (client)-->
+    <string name="fcm_api_key" translatable="false">AIzaSyCj8FavhUY66av7wm-EcYKD8xW6LiEEqqo</string>
 </resources>

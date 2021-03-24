@@ -35,7 +35,7 @@ import android.widget.ProgressBar;
 
 /** A fragment of WebView to render WFC T&C and emergency address web portal */
 public class WfcWebPortalFragment extends Fragment {
-    private static final String TAG = "WfcActivationActivity";
+    private static final String TAG = "IMSSE-WfcWebPortalFragment";
 
     private static final String KEY_URL_STRING = "url";
     private static final String KEY_POST_DATA_STRING = "post_data";

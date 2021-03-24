@@ -18,6 +18,9 @@ package com.android.imsserviceentitlement;
 
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
+
 import com.android.imsserviceentitlement.WfcActivationController.EntitlementResultCallback;
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
 
@@ -30,13 +33,10 @@ import com.google.common.util.concurrent.MoreExecutors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import androidx.annotation.Nullable;
-import androidx.annotation.WorkerThread;
-
 /** Handle entitlement check */
 public class EntitlementUtils {
 
-    public static final String LOG_TAG = "WfcActivationActivity";
+    public static final String LOG_TAG = "IMSSE-EntitlementUtils";
 
     private static final ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
     private static final ExecutorService DIRECT_EXECUTOR_SERVICE =
