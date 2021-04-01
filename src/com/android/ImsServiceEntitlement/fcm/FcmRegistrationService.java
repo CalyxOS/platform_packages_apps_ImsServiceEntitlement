@@ -44,6 +44,8 @@ public class FcmRegistrationService extends JobService {
     private FirebaseInstanceId mFakeInstanceID = null;
     private FirebaseApp mApp = null;
 
+    @VisibleForTesting AsyncTask<JobParameters, Void, Void> mOngoingTask;
+
     /** Enqueues a job for FCM registration. */
     public static void enqueueJob(Context context) {
         ComponentName componentName = new ComponentName(context, FcmRegistrationService.class);
@@ -58,6 +60,12 @@ public class FcmRegistrationService extends JobService {
     @VisibleForTesting
     void setFakeInstanceID(FirebaseInstanceId instanceID) {
         mFakeInstanceID = instanceID;
+    }
+
+    @Override
+    @VisibleForTesting
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(base);
     }
 
     @Override
@@ -79,13 +87,14 @@ public class FcmRegistrationService extends JobService {
 
     @Override
     public boolean onStartJob(JobParameters params) {
-        new AsyncTask<JobParameters, Void, Void>() {
+        mOngoingTask = new AsyncTask<JobParameters, Void, Void>() {
             @Override
             protected Void doInBackground(JobParameters... params) {
                 onHandleWork(params[0]);
                 return null;
             }
-        }.execute(params);
+        };
+        mOngoingTask.execute(params);
         return true;
     }
 
