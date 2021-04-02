@@ -29,6 +29,7 @@ import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IM
 import android.app.job.JobParameters;
 import android.app.job.JobService;
 import android.content.ComponentName;
+import android.content.Context;
 import android.os.AsyncTask;
 import android.os.PersistableBundle;
 import android.telephony.SubscriptionManager;
@@ -36,6 +37,7 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import androidx.annotation.WorkerThread;
 
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
@@ -55,11 +57,26 @@ public class ImsEntitlementPollingService extends JobService {
             ComponentName.unflattenFromString(
                     "com.android.imsserviceentitlement/ImsEntitlementPollingService");
 
+    private WfcActivationApi mWfcActivationApi;
+
     /**
      * Cache job id associated {@link EntitlementPollingTask} objects for canceling once job be
      * canceled.
      */
     private final SparseArray<EntitlementPollingTask> mTasks = new SparseArray<>();
+
+    @VisibleForTesting EntitlementPollingTask mOngoingTask;
+
+    @Override
+    @VisibleForTesting
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(base);
+    }
+
+    @VisibleForTesting
+    void injectWfcActivationApi(WfcActivationApi wfcActivationApi) {
+        this.mWfcActivationApi = wfcActivationApi;
+    }
 
     @Override
     public boolean onStartJob(final JobParameters params) {
@@ -80,10 +97,9 @@ public class ImsEntitlementPollingService extends JobService {
 
         // if the same job ID is scheduled again, the current one will be cancelled by platform and
         // #onStopJob will be called to removed the job.
-        EntitlementPollingTask task = new EntitlementPollingTask(params, subId);
-        mTasks.put(jobId, task);
-        task.execute();
-
+        mOngoingTask = new EntitlementPollingTask(params, subId);
+        mTasks.put(jobId, mOngoingTask);
+        mOngoingTask.execute();
         return true;
     }
 
@@ -100,7 +116,8 @@ public class ImsEntitlementPollingService extends JobService {
         return true;
     }
 
-    private class EntitlementPollingTask extends AsyncTask<Void, Void, Void> {
+    @VisibleForTesting
+    class EntitlementPollingTask extends AsyncTask<Void, Void, Void> {
         private final JobParameters mParams;
         private final WfcActivationApi mWfcActivationApi;
         private final ImsUtils mImsUtils;
@@ -114,9 +131,11 @@ public class ImsEntitlementPollingService extends JobService {
 
         EntitlementPollingTask(final JobParameters params, int subId) {
             this.mParams = params;
-            this.mWfcActivationApi = new WfcActivationApi(ImsEntitlementPollingService.this, subId);
             this.mImsUtils = ImsUtils.getInstance(ImsEntitlementPollingService.this, subId);
             this.mTelephonyUtils = new TelephonyUtils(ImsEntitlementPollingService.this, subId);
+            this.mWfcActivationApi = ImsEntitlementPollingService.this.mWfcActivationApi != null
+                    ? ImsEntitlementPollingService.this.mWfcActivationApi
+                    : new WfcActivationApi(ImsEntitlementPollingService.this, subId);
         }
 
         @Override
