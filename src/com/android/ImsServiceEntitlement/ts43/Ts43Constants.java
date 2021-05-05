@@ -38,6 +38,8 @@ public final class Ts43Constants {
 
         /** XML attribute name of token. */
         public static final String TOKEN = "token";
+        /** XML attribute name of application identifier. */
+        public static final String APP_ID = "AppID";
         /** XML attribute name of entitlement status. */
         public static final String ENTITLEMENT_STATUS = "EntitlementStatus";
         /** XML attribute name of E911 address status. */
