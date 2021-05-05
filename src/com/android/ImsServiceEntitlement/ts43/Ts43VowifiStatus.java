@@ -22,6 +22,7 @@ import com.android.imsserviceentitlement.entitlement.VowifiStatus;
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlAttributes;
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlNode;
 import com.android.imsserviceentitlement.utils.XmlDoc;
+import com.android.libraries.entitlement.ServiceEntitlement;
 
 import com.google.auto.value.AutoValue;
 
@@ -96,21 +97,29 @@ public abstract class Ts43VowifiStatus implements VowifiStatus {
     public static Ts43VowifiStatus.Builder builder(XmlDoc doc) {
         return builder()
                 .setEntitlementStatus(
-                        Integer.parseInt(
-                                doc.get(ResponseXmlNode.APPLICATION,
-                                        ResponseXmlAttributes.ENTITLEMENT_STATUS)))
+                        doc.get(ResponseXmlNode.APPLICATION,
+                                ResponseXmlAttributes.ENTITLEMENT_STATUS,
+                                ServiceEntitlement.APP_VOWIFI)
+                            .map(status -> Integer.parseInt(status))
+                            .orElse(EntitlementStatus.INCOMPATIBLE))
                 .setTcStatus(
-                        Integer.parseInt(
-                                doc.get(ResponseXmlNode.APPLICATION,
-                                        ResponseXmlAttributes.TC_STATUS)))
+                        doc.get(ResponseXmlNode.APPLICATION,
+                                ResponseXmlAttributes.TC_STATUS,
+                                ServiceEntitlement.APP_VOWIFI)
+                            .map(status -> Integer.parseInt(status))
+                            .orElse(TcStatus.NOT_REQUIRED))
                 .setAddrStatus(
-                        Integer.parseInt(
-                                doc.get(ResponseXmlNode.APPLICATION,
-                                        ResponseXmlAttributes.ADDR_STATUS)))
+                        doc.get(ResponseXmlNode.APPLICATION,
+                                ResponseXmlAttributes.ADDR_STATUS,
+                                ServiceEntitlement.APP_VOWIFI)
+                            .map(status -> Integer.parseInt(status))
+                            .orElse(AddrStatus.NOT_REQUIRED))
                 .setProvStatus(
-                        Integer.parseInt(
-                                doc.get(ResponseXmlNode.APPLICATION,
-                                        ResponseXmlAttributes.PROVISION_STATUS)));
+                        doc.get(ResponseXmlNode.APPLICATION,
+                                ResponseXmlAttributes.PROVISION_STATUS,
+                                ServiceEntitlement.APP_VOWIFI)
+                            .map(status -> Integer.parseInt(status))
+                            .orElse(ProvStatus.NOT_REQUIRED));
     }
 
     /** Builder of {@link Ts43VowifiStatus}. */
