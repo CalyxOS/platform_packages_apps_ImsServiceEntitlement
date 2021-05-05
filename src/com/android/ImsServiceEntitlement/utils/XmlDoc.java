@@ -16,6 +16,9 @@
 
 package com.android.imsserviceentitlement.utils;
 
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlAttributes.APP_ID;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlNode.APPLICATION;
+
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.Log;
@@ -35,6 +38,7 @@ import org.xml.sax.SAXException;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.Map;
+import java.util.Optional;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -55,11 +59,14 @@ public class XmlDoc {
         parseXmlResponse(responseBody);
     }
 
-    /** Returns node value for given node and key, or {@code null} if not found. */
-    @Nullable
-    public String get(String node, String key) {
-        Map<String, String> paramsMap = nodesMap.get(node);
-        return paramsMap == null ? null : paramsMap.get(key);
+    /** Returns param value for given node and key. */
+    public Optional<String> get(String node, String key, String appId) {
+        Map<String, String> paramsMap = nodesMap.get(combineKeyWithAppId(node, appId));
+        return Optional.ofNullable(paramsMap == null ? null : paramsMap.get(key));
+    }
+
+    private String combineKeyWithAppId(String node, @Nullable String appId) {
+        return APPLICATION.equals(node) && !TextUtils.isEmpty(appId) ? node + "_" + appId : node;
     }
 
     /**
@@ -104,8 +111,9 @@ public class XmlDoc {
                 Map<String, String> paramsMap = new ArrayMap<>();
                 Element element = (Element) nodeList.item(i);
                 paramsMap.putAll(parseParams(element.getElementsByTagName(NODE_PARM)));
-
-                nodesMap.put(map.item(0).getNodeValue(), paramsMap);
+                nodesMap.put(
+                        combineKeyWithAppId(map.item(0).getNodeValue(), paramsMap.get(APP_ID)),
+                        paramsMap);
             }
         } catch (ParserConfigurationException | IOException | SAXException e) {
             Log.e(TAG, "Failed to parse XML node. " + e);
