@@ -88,13 +88,38 @@ public class XmlDocTest {
                     + "</characteristic>"
                     + "</wap-provisioningdoc>";
 
+    // A XML sample with server URL and user data unset.
+    private static final String AUTH_RESPONSE_XML_4 =
+            "<wap-provisioningdoc version=\"1.1\">"
+                    + "<characteristic type=\"APPLICATION\">"
+                    + "<parm name=\"AppID\" value=\"ap2004\"/>"
+                    + "<parm name=\"ServiceFlow_URL\" value=\"\""
+                    + "<parm name=\"ServiceFlow_UserData\" value=\"\"/>"
+                    + "</characteristic>"
+                    + "</wap-provisioningdoc>";
+
+    // A XML sample with multiple appIDs
+    private static final String AUTH_RESPONSE_XML_5 =
+            "<wap-provisioningdoc version=\"1.1\">"
+                    + "<characteristic type=\"APPLICATION\">"
+                    + "<parm name=\"AppID\" value=\"ap2004\"/>"
+                    + "<parm name=\"EntitlementStatus\" value=\"0\"/>"
+                    + "</characteristic>"
+                    + "<characteristic type=\"APPLICATION\">"
+                    + "<parm name=\"AppID\" value=\"ap2005\"/>"
+                    + "<parm name=\"EntitlementStatus\" value=\"1\"/>"
+                    + "</characteristic>"
+                    + "</wap-provisioningdoc>";
+
     private static final String TOKEN = "kZYfCEpSsMr88KZVmab5UsZVzl+nWSsX";
 
     @Test
     public void parseAuthenticateResponse() {
-        assertThat(new XmlDoc(AUTH_RESPONSE_XML).get("TOKEN", "token")).isEqualTo(TOKEN);
+        XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML);
+
+        assertThat(xmlDoc.get("TOKEN", "token", "ap2004").get()).isEqualTo(TOKEN);
         // Note "&amp;" in input XML are un-escaped to "&".
-        assertThat(new XmlDoc(AUTH_RESPONSE_XML).get("APPLICATION", "ServiceFlow_UserData"))
+        assertThat(xmlDoc.get("APPLICATION", "ServiceFlow_UserData", "ap2004").get())
                 .isEqualTo("token=Y5vcmc%3D"
                         + "&entitlementStatus=0"
                         + "&protocol=TS43"
@@ -106,16 +131,37 @@ public class XmlDocTest {
 
     @Test
     public void parseAuthenticateResponse2() {
-        assertThat(new XmlDoc(AUTH_RESPONSE_XML_2).get("TOKEN", "token")).isEqualTo(TOKEN);
+        XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_2);
+
+        assertThat(xmlDoc.get("TOKEN", "token", "ap2004").get()).isEqualTo(TOKEN);
         // Note the "&" in input XML is kept as is
-        assertThat(new XmlDoc(AUTH_RESPONSE_XML_2).get("APPLICATION", "ServiceFlow_UserData"))
+        assertThat(xmlDoc.get("APPLICATION", "ServiceFlow_UserData", "ap2004").get())
                 .isEqualTo("PostData=U6%2FbQ%2BEP&req_locale=en_US");
     }
 
     @Test
     public void parseAuthenticateResponse3() {
+        XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_3);
+
         // Note the "&amp;amp;" in input XML is un-escaped to "&amp;"
-        assertThat(new XmlDoc(AUTH_RESPONSE_XML_3).get("APPLICATION", "ServiceFlow_UserData"))
+        assertThat(xmlDoc.get("APPLICATION", "ServiceFlow_UserData", "ap2004").get())
                 .isEqualTo("PostData=U6%2FbQ%2BEP&amp;l=en_US");
+    }
+
+    @Test
+    public void parseAuthenticateResponse4() {
+        XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_4);
+
+        assertThat(xmlDoc.get("APPLICATION", "ServiceFlow_URL", "ap2004").isPresent()).isFalse();
+        assertThat(
+                xmlDoc.get("APPLICATION", "ServiceFlow_UserData", "ap2004").isPresent()).isFalse();
+    }
+
+    @Test
+    public void parseAuthenticateResponse5() {
+        XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_5);
+
+        assertThat(xmlDoc.get("APPLICATION", "EntitlementStatus", "ap2004").get()).isEqualTo("0");
+        assertThat(xmlDoc.get("APPLICATION", "EntitlementStatus", "ap2005").get()).isEqualTo("1");
     }
 }

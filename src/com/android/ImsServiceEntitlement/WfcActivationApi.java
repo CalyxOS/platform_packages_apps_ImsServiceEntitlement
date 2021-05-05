@@ -64,8 +64,8 @@ public class WfcActivationApi {
 
     /**
      * Returns WFC entitlement check result from carrier API (over network), or {@code null} on
-     * unrecoverable network issue or malformed server response.
-     * This is blocking call so should not be called on main thread.
+     * unrecoverable network issue or malformed server response. This is blocking call so should not
+     * be called on main thread.
      */
     @Nullable
     public EntitlementResult checkEntitlementStatus() {
@@ -79,6 +79,7 @@ public class WfcActivationApi {
 
     /** Query for status of {@link AppId#VOWIFI}). */
     @VisibleForTesting
+    @Nullable
     EntitlementResult voWifiEntitlementStatus() {
         Log.d(TAG, "voWifiEntitlementStatus subId=" + subId);
 
@@ -99,12 +100,14 @@ public class WfcActivationApi {
             entitlementXmlDoc =
                     new XmlDoc(
                             serviceEntitlement.queryEntitlementStatus(
-                                    ServiceEntitlement.APP_VOWIFI,
-                                    request));
+                                    ServiceEntitlement.APP_VOWIFI, request));
             // While finishing the initial AuthN, save the token
             // and to be used next time for fast AuthN.
-            mCachedAccessToken = entitlementXmlDoc.get(
-                    ResponseXmlNode.TOKEN, ResponseXmlAttributes.TOKEN);
+            entitlementXmlDoc.get(
+                        ResponseXmlNode.TOKEN,
+                        ResponseXmlAttributes.TOKEN,
+                        ServiceEntitlement.APP_VOWIFI)
+                    .ifPresent(token -> mCachedAccessToken = token);
         } catch (ServiceEntitlementException e) {
             Log.e(TAG, "queryEntitlementStatus failed", e);
         }
@@ -112,18 +115,21 @@ public class WfcActivationApi {
     }
 
     private static EntitlementResult toEntitlementResult(XmlDoc doc) {
-        return EntitlementResult.builder()
-                .setSuccess(true)
-                .setVowifiStatus(Ts43VowifiStatus.builder(doc).build())
-                .setEmergencyAddressWebUrl(
-                        doc.get(
-                                ResponseXmlNode.APPLICATION,
-                                ResponseXmlAttributes.SERVER_FLOW_URL))
-                .setEmergencyAddressWebData(
-                        doc.get(
-                                ResponseXmlNode.APPLICATION,
-                                ResponseXmlAttributes.SERVER_FLOW_USER_DATA))
-                .build();
+        EntitlementResult.Builder builder =
+                EntitlementResult.builder()
+                        .setSuccess(true)
+                        .setVowifiStatus(Ts43VowifiStatus.builder(doc).build());
+        doc.get(
+                ResponseXmlNode.APPLICATION,
+                ResponseXmlAttributes.SERVER_FLOW_URL,
+                ServiceEntitlement.APP_VOWIFI)
+            .ifPresent(url -> builder.setEmergencyAddressWebUrl(url));
+        doc.get(
+                ResponseXmlNode.APPLICATION,
+                ResponseXmlAttributes.SERVER_FLOW_USER_DATA,
+                ServiceEntitlement.APP_VOWIFI)
+            .ifPresent(userData -> builder.setEmergencyAddressWebData(userData));
+        return builder.build();
     }
 
     private CarrierConfig getCarrierConfig(Context context) {
