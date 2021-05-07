@@ -24,10 +24,8 @@ import java.util.Optional;
 
 /** Provides API for debugging and not allow to debug on user build. */
 public final class DebugUtils {
-    private static final String TAG = "WfcActivationActivity";
-
-    private static final String PROP_PII_LOGGABLE = "dbg.wfc.pii_loggable";
-    private static final String PROP_SERVER_URL_OVERRIDE = "persist.dbg.wfc.server_url";
+    private static final String PROP_PII_LOGGABLE = "dbg.imsse.pii_loggable";
+    private static final String PROP_SERVER_URL_OVERRIDE = "persist.dbg.imsse.server_url";
     private static final String BUILD_TYPE_USER = "user";
 
     private DebugUtils() {}
