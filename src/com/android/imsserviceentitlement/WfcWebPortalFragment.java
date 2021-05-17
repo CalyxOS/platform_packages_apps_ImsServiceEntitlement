@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 package com.android.imsserviceentitlement;
@@ -43,8 +43,8 @@ public class WfcWebPortalFragment extends Fragment {
 
     private static final String URL_WITH_PDF_FILE_EXTENSION = ".pdf";
 
-    private WebView webView;
-    private boolean finishFlow = false;
+    private WebView mWebView;
+    private boolean mFinishFlow = false;
 
     /** Public static constructor */
     public static WfcWebPortalFragment newInstance(
@@ -72,8 +72,8 @@ public class WfcWebPortalFragment extends Fragment {
         String jsCallbackObject = arguments.getString(KEY_JS_CALLBACK_OBJECT_STRING, "");
 
         ProgressBar spinner = v.findViewById(R.id.loadingbar);
-        webView = v.findViewById(R.id.webview);
-        webView.setWebViewClient(
+        mWebView = v.findViewById(R.id.webview);
+        mWebView.setWebViewClient(
                 new WebViewClient() {
                     @Override
                     public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -91,7 +91,7 @@ public class WfcWebPortalFragment extends Fragment {
                         super.onPageFinished(view, url);
                     }
                 });
-        webView.addOnAttachStateChangeListener(
+        mWebView.addOnAttachStateChangeListener(
                 new OnAttachStateChangeListener() {
                     @Override
                     public void onViewAttachedToWindow(View v) {
@@ -100,21 +100,21 @@ public class WfcWebPortalFragment extends Fragment {
                     @Override
                     public void onViewDetachedFromWindow(View v) {
                         Log.d(TAG, "#onViewDetachedFromWindow");
-                        if (!finishFlow) {
+                        if (!mFinishFlow) {
                             ((WfcActivationUi) getActivity()).setResultAndFinish(
                                     Activity.RESULT_CANCELED);
                         }
                     }
                 });
-        webView.addJavascriptInterface(new JsInterface(getActivity()), jsCallbackObject);
-        WebSettings settings = webView.getSettings();
+        mWebView.addJavascriptInterface(new JsInterface(getActivity()), jsCallbackObject);
+        WebSettings settings = mWebView.getSettings();
         settings.setDomStorageEnabled(true);
         settings.setJavaScriptEnabled(true);
 
         if (TextUtils.isEmpty(postData)) {
-            webView.loadUrl(url);
+            mWebView.loadUrl(url);
         } else {
-            webView.postUrl(url, postData.getBytes());
+            mWebView.postUrl(url, postData.getBytes());
         }
         return v;
     }
@@ -127,10 +127,10 @@ public class WfcWebPortalFragment extends Fragment {
      */
     public boolean onKeyDown(int keyCode, KeyEvent keyEvent) {
         if (keyCode == KeyEvent.KEYCODE_BACK && keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
-            if (webView != null
-                    && webView.canGoBack()
-                    && webView.getUrl().toLowerCase().endsWith(URL_WITH_PDF_FILE_EXTENSION)) {
-                webView.goBack();
+            if (mWebView != null
+                    && mWebView.canGoBack()
+                    && mWebView.getUrl().toLowerCase().endsWith(URL_WITH_PDF_FILE_EXTENSION)) {
+                mWebView.goBack();
                 return true;
             }
         }
@@ -139,10 +139,10 @@ public class WfcWebPortalFragment extends Fragment {
 
     /** Emergency address websheet javascript callback. */
     private class JsInterface {
-        private final WfcActivationUi ui;
+        private final WfcActivationUi mUi;
 
         JsInterface(Activity activity) {
-            ui = (WfcActivationUi) activity;
+            mUi = (WfcActivationUi) activity;
         }
 
         /**
@@ -152,8 +152,8 @@ public class WfcWebPortalFragment extends Fragment {
         @JavascriptInterface
         public void entitlementChanged() {
             Log.d(TAG, "#entitlementChanged");
-            finishFlow = true;
-            ui.getController().finishFlow();
+            mFinishFlow = true;
+            mUi.getController().finishFlow();
         }
 
         /**
@@ -163,7 +163,7 @@ public class WfcWebPortalFragment extends Fragment {
         @JavascriptInterface
         public void dismissFlow() {
             Log.d(TAG, "#dismissFlow");
-            ui.setResultAndFinish(Activity.RESULT_CANCELED);
+            mUi.setResultAndFinish(Activity.RESULT_CANCELED);
         }
     }
 }

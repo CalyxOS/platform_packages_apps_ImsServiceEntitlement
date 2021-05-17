@@ -56,7 +56,7 @@ public class ImsEntitlementPollingServiceTest {
     @Mock private JobParameters mJobParameters;
     @Mock private SubscriptionManager mSubscriptionManager;
     @Mock private SubscriptionInfo mSubscriptionInfo;
-    @Mock private WfcActivationApi mWfcActivationApi;
+    @Mock private ImsEntitlementApi mImsEntitlementApi;
 
     private ImsEntitlementPollingService mService;
 
@@ -69,7 +69,7 @@ public class ImsEntitlementPollingServiceTest {
         mService.attachBaseContext(mContext);
         mService.onCreate();
         mService.onBind(null);
-        mService.injectWfcActivationApi(mWfcActivationApi);
+        mService.injectImsEntitlementApi(mImsEntitlementApi);
         setActivedSubscription();
         setupImsUtils();
         setJobParameters();
@@ -83,14 +83,14 @@ public class ImsEntitlementPollingServiceTest {
         mService.onStartJob(mJobParameters);
         mService.mOngoingTask.get(); // wait for job finish.
 
-        verify(mWfcActivationApi, never()).checkEntitlementStatus();
+        verify(mImsEntitlementApi, never()).checkEntitlementStatus();
     }
 
 
     @Test
     public void doEntitlementCheck_shouldTurnOffWfc_disableWfc() throws Exception {
         EntitlementResult entitlementResult = getEntitlementResult(sDisableVoWiFi);
-        when(mWfcActivationApi.checkEntitlementStatus()).thenReturn(entitlementResult);
+        when(mImsEntitlementApi.checkEntitlementStatus()).thenReturn(entitlementResult);
 
         mService.onStartJob(mJobParameters);
         mService.mOngoingTask.get(); // wait for job finish.
@@ -101,7 +101,7 @@ public class ImsEntitlementPollingServiceTest {
     @Test
     public void doEntitlementCheck_shouldNotTurnOffWfc_enableWfc() throws Exception {
         EntitlementResult entitlementResult = getEntitlementResult(sEnableVoWiFi);
-        when(mWfcActivationApi.checkEntitlementStatus()).thenReturn(entitlementResult);
+        when(mImsEntitlementApi.checkEntitlementStatus()).thenReturn(entitlementResult);
 
         mService.onStartJob(mJobParameters);
         mService.mOngoingTask.get(); // wait for job finish.
@@ -119,7 +119,7 @@ public class ImsEntitlementPollingServiceTest {
     private void setupImsUtils() throws Exception {
         SparseArray<ImsUtils> imsUtilsInstances = new SparseArray<>();
         imsUtilsInstances.put(SUB_ID, mImsUtils);
-        Field field = ImsUtils.class.getDeclaredField("instances");
+        Field field = ImsUtils.class.getDeclaredField("sInstances");
         field.setAccessible(true);
         field.set(null, imsUtilsInstances);
     }

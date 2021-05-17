@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 package com.android.imsserviceentitlement.ts43;
@@ -52,5 +52,9 @@ public final class Ts43Constants {
         public static final String SERVER_FLOW_URL = "ServiceFlow_URL";
         /** XML attribute name of entitlement server user data. */
         public static final String SERVER_FLOW_USER_DATA = "ServiceFlow_UserData";
+        /** XML attribute name of version. */
+        public static final String VERSION = "version";
+        /** XML attribute name of validity. */
+        public static final String VALIDITY = "validity";
     }
 }

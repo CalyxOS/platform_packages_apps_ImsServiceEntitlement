@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 package com.android.imsserviceentitlement;
@@ -64,34 +64,32 @@ public class WfcActivationController {
             Duration.ofMinutes(30).toMillis();
 
     // Dependencies
-    private final Context context;
-    private final WfcActivationUi activationUi;
-    private final TelephonyUtils telephonyUtils;
-    private final WfcActivationApi activationApi;
-    private final ImsUtils imsUtils;
-    private final Intent startIntent;
+    private final WfcActivationUi mActivationUi;
+    private final TelephonyUtils mTelephonyUtils;
+    private final ImsEntitlementApi mImsEntitlementApi;
+    private final ImsUtils mImsUtils;
+    private final Intent mStartIntent;
 
     // States
-    private int evaluateTimes = 0;
+    private int mEvaluateTimes = 0;
 
     // States for metrics
-    private long startTime;
-    private long durationMillis;
-    private int purpose = IMS_SERVICE_ENTITLEMENT_UPDATED__PURPOSE__UNKNOWN_PURPOSE;
-    private int appResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT;
+    private long mStartTime;
+    private long mDurationMillis;
+    private int mPurpose = IMS_SERVICE_ENTITLEMENT_UPDATED__PURPOSE__UNKNOWN_PURPOSE;
+    private int mAppResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT;
 
     @MainThread
     public WfcActivationController(
             Context context,
             WfcActivationUi wfcActivationUi,
-            WfcActivationApi activationApi,
+            ImsEntitlementApi imsEntitlementApi,
             Intent intent) {
-        startIntent = intent;
-        this.context = context;
-        this.activationUi = wfcActivationUi;
-        this.activationApi = activationApi;
-        telephonyUtils = new TelephonyUtils(context, getSubId());
-        imsUtils = ImsUtils.getInstance(context, getSubId());
+        this.mStartIntent = intent;
+        this.mActivationUi = wfcActivationUi;
+        this.mImsEntitlementApi = imsEntitlementApi;
+        this.mTelephonyUtils = new TelephonyUtils(context, getSubId());
+        this.mImsUtils = ImsUtils.getInstance(context, getSubId());
     }
 
     /** Indicates the controller to start WFC activation or emergency address update flow. */
@@ -100,22 +98,22 @@ public class WfcActivationController {
         showGeneralWaitingUi();
         evaluateEntitlementStatus();
         if (isActivationFlow()) {
-            purpose = IMS_SERVICE_ENTITLEMENT_UPDATED__PURPOSE__ACTIVATION;
+            mPurpose = IMS_SERVICE_ENTITLEMENT_UPDATED__PURPOSE__ACTIVATION;
         } else {
-            purpose = IMS_SERVICE_ENTITLEMENT_UPDATED__PURPOSE__UPDATE;
+            mPurpose = IMS_SERVICE_ENTITLEMENT_UPDATED__PURPOSE__UPDATE;
         }
-        startTime = telephonyUtils.getUptimeMillis();
+        mStartTime = mTelephonyUtils.getUptimeMillis();
     }
 
     /** Evaluates entitlement status for activation or update. */
     @MainThread
     public void evaluateEntitlementStatus() {
-        if (!telephonyUtils.isNetworkConnected()) {
+        if (!mTelephonyUtils.isNetworkConnected()) {
             handleInitialEntitlementStatus(null);
             return;
         }
         EntitlementUtils.entitlementCheck(
-                activationApi, result -> handleInitialEntitlementStatus(result));
+                mImsEntitlementApi, result -> handleInitialEntitlementStatus(result));
     }
 
     /**
@@ -132,7 +130,7 @@ public class WfcActivationController {
     @MainThread
     public void reevaluateEntitlementStatus() {
         EntitlementUtils.entitlementCheck(
-                activationApi, result -> handleReevaluationEntitlementStatus(result));
+                mImsEntitlementApi, result -> handleReevaluationEntitlementStatus(result));
     }
 
     /** The interface for handling the entitlement check result. */
@@ -146,21 +144,21 @@ public class WfcActivationController {
         EntitlementUtils.cancelEntitlementCheck();
 
         // If no duration set, set now.
-        if (durationMillis == 0L) {
-            durationMillis = telephonyUtils.getUptimeMillis() - startTime;
+        if (mDurationMillis == 0L) {
+            mDurationMillis = mTelephonyUtils.getUptimeMillis() - mStartTime;
         }
         // If no result set, it must be cancelled by user pressing back button.
-        if (appResult == IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT) {
-            appResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__CANCELED;
+        if (mAppResult == IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT) {
+            mAppResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__CANCELED;
         }
         ImsServiceEntitlementStatsLog.write(
                 IMS_SERVICE_ENTITLEMENT_UPDATED,
-                /* carrier_id= */ telephonyUtils.getCarrierId(),
-                /* actual_carrier_id= */ telephonyUtils.getSpecificCarrierId(),
-                purpose,
+                /* carrier_id= */ mTelephonyUtils.getCarrierId(),
+                /* actual_carrier_id= */ mTelephonyUtils.getSpecificCarrierId(),
+                mPurpose,
                 IMS_SERVICE_ENTITLEMENT_UPDATED__SERVICE_TYPE__VOWIFI,
-                appResult,
-                durationMillis);
+                mAppResult,
+                mDurationMillis);
     }
 
     /**
@@ -168,17 +166,17 @@ public class WfcActivationController {
      * address update.
      */
     private boolean isActivationFlow() {
-        return ActivityConstants.isActivationFlow(startIntent);
+        return ActivityConstants.isActivationFlow(mStartIntent);
     }
 
     private int getSubId() {
-        return ActivityConstants.getSubId(startIntent);
+        return ActivityConstants.getSubId(mStartIntent);
     }
 
     /** Returns UI title string resource ID based on {@link #isActivationFlow()}. */
     @StringRes
     private int getUiTitle() {
-        int intention = ActivityConstants.getLaunchIntention(startIntent);
+        int intention = ActivityConstants.getLaunchIntention(mStartIntent);
         if (intention == ActivityConstants.LAUNCH_APP_ACTIVATE) {
             return R.string.activate_title;
         }
@@ -192,7 +190,7 @@ public class WfcActivationController {
     /** Returns general error string resource ID based on {@link #isActivationFlow()}. */
     @StringRes
     private int getGeneralErrorText() {
-        int intention = ActivityConstants.getLaunchIntention(startIntent);
+        int intention = ActivityConstants.getLaunchIntention(mStartIntent);
         if (intention == ActivityConstants.LAUNCH_APP_ACTIVATE) {
             return R.string.wfc_activation_error;
         } else if (intention == ActivityConstants.LAUNCH_APP_SHOW_TC) {
@@ -203,7 +201,7 @@ public class WfcActivationController {
     }
 
     private void showErrorUi(@StringRes int errorMessage) {
-        activationUi.showActivationUi(
+        mActivationUi.showActivationUi(
                 getUiTitle(), errorMessage, false, R.string.ok, WfcActivationUi.RESULT_FAILURE, 0);
     }
 
@@ -212,7 +210,7 @@ public class WfcActivationController {
     }
 
     private void showGeneralWaitingUi() {
-        activationUi.showActivationUi(getUiTitle(), R.string.progress_text, true, 0, 0, 0);
+        mActivationUi.showActivationUi(getUiTitle(), R.string.progress_text, true, 0, 0, 0);
     }
 
     @MainThread
@@ -235,19 +233,19 @@ public class WfcActivationController {
         VowifiStatus vowifiStatus = result.getVowifiStatus();
         if (vowifiStatus.vowifiEntitled()) {
             finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__SUCCESSFUL);
-            activationUi.setResultAndFinish(Activity.RESULT_OK);
+            mActivationUi.setResultAndFinish(Activity.RESULT_OK);
         } else {
             if (vowifiStatus.serverDataMissing()) {
                 if (!TextUtils.isEmpty(result.getTermsAndConditionsWebUrl())) {
-                    activationUi.showWebview(
+                    mActivationUi.showWebview(
                             result.getTermsAndConditionsWebUrl(),
                             /* postData= */ null,
-                            activationApi.getWebviewJsControllerName());
+                            mImsEntitlementApi.getWebviewJsControllerName());
                 } else {
-                    activationUi.showWebview(
+                    mActivationUi.showWebview(
                             result.getEmergencyAddressWebUrl(),
                             result.getEmergencyAddressWebData(),
-                            activationApi.getWebviewJsControllerName());
+                            mImsEntitlementApi.getWebviewJsControllerName());
                 }
             } else if (vowifiStatus.incompatible()) {
                 finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__INCOMPATIBLE);
@@ -264,17 +262,17 @@ public class WfcActivationController {
     private void handleEntitlementStatusForUpdating(EntitlementResult result) {
         VowifiStatus vowifiStatus = result.getVowifiStatus();
         if (vowifiStatus.vowifiEntitled()) {
-            int launchIntention = ActivityConstants.getLaunchIntention(startIntent);
+            int launchIntention = ActivityConstants.getLaunchIntention(mStartIntent);
             if (launchIntention == ActivityConstants.LAUNCH_APP_SHOW_TC) {
-                activationUi.showWebview(
+                mActivationUi.showWebview(
                         result.getTermsAndConditionsWebUrl(),
                         /* postData= */ null,
-                        activationApi.getWebviewJsControllerName());
+                        mImsEntitlementApi.getWebviewJsControllerName());
             } else {
-                activationUi.showWebview(
+                mActivationUi.showWebview(
                         result.getEmergencyAddressWebUrl(),
                         result.getEmergencyAddressWebData(),
-                        activationApi.getWebviewJsControllerName());
+                        mImsEntitlementApi.getWebviewJsControllerName());
             }
         } else {
             if (vowifiStatus.incompatible()) {
@@ -309,18 +307,18 @@ public class WfcActivationController {
     private void handleEntitlementStatusAfterActivation(EntitlementResult result) {
         VowifiStatus vowifiStatus = result.getVowifiStatus();
         if (vowifiStatus.vowifiEntitled()) {
-            activationUi.setResultAndFinish(Activity.RESULT_OK);
+            mActivationUi.setResultAndFinish(Activity.RESULT_OK);
             finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__SUCCESSFUL);
         } else {
             if (vowifiStatus.serverDataMissing()) {
                 // Check again after 5s, max retry 6 times
-                if (evaluateTimes < ENTITLEMENT_STATUS_UPDATE_RETRY_MAX) {
-                    evaluateTimes += 1;
+                if (mEvaluateTimes < ENTITLEMENT_STATUS_UPDATE_RETRY_MAX) {
+                    mEvaluateTimes += 1;
                     postDelay(
                             getEntitlementStatusUpdateRetryIntervalMs(),
                             this::reevaluateEntitlementStatus);
                 } else {
-                    evaluateTimes = 0;
+                    mEvaluateTimes = 0;
                     showGeneralErrorUi();
                     finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__TIMEOUT);
                 }
@@ -341,13 +339,13 @@ public class WfcActivationController {
     private void handleEntitlementStatusAfterUpdating(EntitlementResult result) {
         VowifiStatus vowifiStatus = result.getVowifiStatus();
         if (vowifiStatus.vowifiEntitled()) {
-            activationUi.setResultAndFinish(Activity.RESULT_OK);
+            mActivationUi.setResultAndFinish(Activity.RESULT_OK);
             finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__SUCCESSFUL);
         } else if (vowifiStatus.serverDataMissing()) {
             // Some carrier allows de-activating in updating flow.
             turnOffWfc(() -> {
                 finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED);
-                activationUi.setResultAndFinish(Activity.RESULT_OK);
+                mActivationUi.setResultAndFinish(Activity.RESULT_OK);
             });
         } else {
             Log.e(TAG, "Unexpected status. Show error UI.");
@@ -375,11 +373,11 @@ public class WfcActivationController {
     /** Turns WFC off and then runs {@code action} on main thread. */
     @MainThread
     private void turnOffWfc(Runnable action) {
-        ImsUtils.turnOffWfc(imsUtils, action);
+        ImsUtils.turnOffWfc(mImsUtils, action);
     }
 
     private void finishStatsLog(int result) {
-        appResult = result;
-        durationMillis = telephonyUtils.getUptimeMillis() - startTime;
+        mAppResult = result;
+        mDurationMillis = mTelephonyUtils.getUptimeMillis() - mStartTime;
     }
 }

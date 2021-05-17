@@ -1,4 +1,3 @@
-<<<<<<< TARGET BRANCH (88d6f3 Update debug property naming am: 3e826cd38a am: fe5484a889 a)
 /*
  * Copyright (C) 2021 The Android Open Source Project
  *
@@ -12,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 package com.android.imsserviceentitlement.ts43;
@@ -32,6 +31,7 @@ import com.google.auto.value.AutoValue;
  * solution.
  */
 @AutoValue
+@VisibleForTesting
 public abstract class Ts43VowifiStatus implements VowifiStatus {
     /** The entitlement status of vowifi service. */
     @VisibleForTesting
@@ -185,5 +185,3 @@ public abstract class Ts43VowifiStatus implements VowifiStatus {
                 + "}";
     }
 }
-=======
->>>>>>> SOURCE BRANCH (41ee8c Implement the data store for saving the characteristics am: )

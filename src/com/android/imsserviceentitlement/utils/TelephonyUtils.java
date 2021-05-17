@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 package com.android.imsserviceentitlement.utils;
@@ -35,32 +35,21 @@ import java.util.List;
 public class TelephonyUtils {
     public static final String TAG = "IMSSE-TelephonyUtils";
 
-    private final ConnectivityManager connectivityManager;
-    private final TelephonyManager telephonyManager;
+    private final ConnectivityManager mConnectivityManager;
+    private final TelephonyManager mTelephonyManager;
 
     public TelephonyUtils(Context context) {
         this(context, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
     }
 
     public TelephonyUtils(Context context, int subId) {
-        /* We can also use:
-         *
-         * telephonyManager = context.getSystemService(TelephonyManager.class);
-         *
-         * But Context#getSystemService(Class<T> serviceClass) is a final method, which cannot
-         * be stubbed in Mockito. Hence it's little more dificult to test.
-         */
         if (SubscriptionManager.isValidSubscriptionId(subId)) {
-            telephonyManager =
-                    ((TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE))
-                            .createForSubscriptionId(subId);
+            mTelephonyManager =
+                    context.getSystemService(TelephonyManager.class).createForSubscriptionId(subId);
         } else {
-            telephonyManager = (TelephonyManager) context.getSystemService(
-                    Context.TELEPHONY_SERVICE);
+            mTelephonyManager = context.getSystemService(TelephonyManager.class);
         }
-
-        connectivityManager =
-                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        mConnectivityManager = context.getSystemService(ConnectivityManager.class);
     }
 
     /** Returns device timestamp in milliseconds. */
@@ -85,7 +74,7 @@ public class TelephonyUtils {
 
     /** Returns {@code true} if network is connected (cellular or WiFi). */
     public boolean isNetworkConnected() {
-        NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
+        NetworkInfo activeNetwork = mConnectivityManager.getActiveNetworkInfo();
         return activeNetwork != null && activeNetwork.isConnected();
     }
 
@@ -95,18 +84,18 @@ public class TelephonyUtils {
      * <p>Requires permission: READ_PRIVILEGED_PHONE_STATE
      */
     public String getEapAkaAuthentication(String data) {
-        return telephonyManager.getIccAuthentication(
+        return mTelephonyManager.getIccAuthentication(
                 TelephonyManager.APPTYPE_USIM, TelephonyManager.AUTHTYPE_EAP_AKA, data);
     }
 
     /** Returns carrier ID. */
     public int getCarrierId() {
-        return telephonyManager.getSimCarrierId();
+        return mTelephonyManager.getSimCarrierId();
     }
 
     /** Returns fine-grained carrier ID. */
     public int getSpecificCarrierId() {
-        return telephonyManager.getSimSpecificCarrierId();
+        return mTelephonyManager.getSimSpecificCarrierId();
     }
 
     /**

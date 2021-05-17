@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 package com.android.imsserviceentitlement;
@@ -57,7 +57,7 @@ public class ImsEntitlementPollingService extends JobService {
             ComponentName.unflattenFromString(
                     "com.android.imsserviceentitlement/ImsEntitlementPollingService");
 
-    private WfcActivationApi mWfcActivationApi;
+    private ImsEntitlementApi mImsEntitlementApi;
 
     /**
      * Cache job id associated {@link EntitlementPollingTask} objects for canceling once job be
@@ -74,8 +74,8 @@ public class ImsEntitlementPollingService extends JobService {
     }
 
     @VisibleForTesting
-    void injectWfcActivationApi(WfcActivationApi wfcActivationApi) {
-        this.mWfcActivationApi = wfcActivationApi;
+    void injectImsEntitlementApi(ImsEntitlementApi imsEntitlementApi) {
+        this.mImsEntitlementApi = imsEntitlementApi;
     }
 
     @Override
@@ -119,7 +119,7 @@ public class ImsEntitlementPollingService extends JobService {
     @VisibleForTesting
     class EntitlementPollingTask extends AsyncTask<Void, Void, Void> {
         private final JobParameters mParams;
-        private final WfcActivationApi mWfcActivationApi;
+        private final ImsEntitlementApi mImsEntitlementApi;
         private final ImsUtils mImsUtils;
         private final TelephonyUtils mTelephonyUtils;
 
@@ -133,9 +133,9 @@ public class ImsEntitlementPollingService extends JobService {
             this.mParams = params;
             this.mImsUtils = ImsUtils.getInstance(ImsEntitlementPollingService.this, subId);
             this.mTelephonyUtils = new TelephonyUtils(ImsEntitlementPollingService.this, subId);
-            this.mWfcActivationApi = ImsEntitlementPollingService.this.mWfcActivationApi != null
-                    ? ImsEntitlementPollingService.this.mWfcActivationApi
-                    : new WfcActivationApi(ImsEntitlementPollingService.this, subId);
+            this.mImsEntitlementApi = ImsEntitlementPollingService.this.mImsEntitlementApi != null
+                    ? ImsEntitlementPollingService.this.mImsEntitlementApi
+                    : new ImsEntitlementApi(ImsEntitlementPollingService.this, subId);
         }
 
         @Override
@@ -172,7 +172,7 @@ public class ImsEntitlementPollingService extends JobService {
                 return;
             }
             try {
-                EntitlementResult result = mWfcActivationApi.checkEntitlementStatus();
+                EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
                 Log.d(TAG, "Entitlement result: " + result);
                 if (shouldTurnOffWfc(result)) {
                     mAppResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED;

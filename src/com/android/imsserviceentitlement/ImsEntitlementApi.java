@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 package com.android.imsserviceentitlement;
@@ -23,6 +23,7 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
+import com.android.imsserviceentitlement.entitlement.EntitlementConfiguration;
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
 import com.android.imsserviceentitlement.fcm.FcmTokenStore;
 import com.android.imsserviceentitlement.fcm.FcmUtils;
@@ -36,30 +37,36 @@ import com.android.libraries.entitlement.ServiceEntitlement;
 import com.android.libraries.entitlement.ServiceEntitlementException;
 import com.android.libraries.entitlement.ServiceEntitlementRequest;
 
+import com.google.common.collect.ImmutableList;
+
 /** Implementation of the entitlement API. */
-public class WfcActivationApi {
-    private static final String TAG = "IMSSE-WfcActivationApi";
+public class ImsEntitlementApi {
+    private static final String TAG = "IMSSE-ImsEntitlementApi";
 
     private static final String JS_CONTROLLER_NAME = "VoWiFiWebServiceFlow";
 
-    private final Context context;
-    private final int subId;
-    private final ServiceEntitlement serviceEntitlement;
+    private final Context mContext;
+    private final int mSubId;
+    private final ServiceEntitlement mServiceEntitlement;
+    private final EntitlementConfiguration mLastEntitlementConfiguration;
 
     private String mCachedAccessToken;
 
-    public WfcActivationApi(Context context, int subId) {
-        this.context = context;
-        this.subId = subId;
+    public ImsEntitlementApi(Context context, int subId) {
+        this.mContext = context;
+        this.mSubId = subId;
         CarrierConfig carrierConfig = getCarrierConfig(context);
-        this.serviceEntitlement = new ServiceEntitlement(context, carrierConfig, subId);
+        this.mServiceEntitlement = new ServiceEntitlement(context, carrierConfig, subId);
+        this.mLastEntitlementConfiguration = new EntitlementConfiguration(context, subId);
     }
 
     @VisibleForTesting
-    WfcActivationApi(Context context, int subId, ServiceEntitlement serviceEntitlement) {
-        this.context = context;
-        this.subId = subId;
-        this.serviceEntitlement = serviceEntitlement;
+    ImsEntitlementApi(Context context, int subId, ServiceEntitlement serviceEntitlement,
+            EntitlementConfiguration lastEntitlementConfiguration) {
+        this.mContext = context;
+        this.mSubId = subId;
+        this.mServiceEntitlement = serviceEntitlement;
+        this.mLastEntitlementConfiguration = lastEntitlementConfiguration;
     }
 
     /**
@@ -69,26 +76,14 @@ public class WfcActivationApi {
      */
     @Nullable
     public EntitlementResult checkEntitlementStatus() {
-        return voWifiEntitlementStatus();
-    }
-
-    /** Returns the name of JS controller object used in emergency address webview. */
-    public String getWebviewJsControllerName() {
-        return JS_CONTROLLER_NAME;
-    }
-
-    /** Query for status of {@link AppId#VOWIFI}). */
-    @VisibleForTesting
-    @Nullable
-    EntitlementResult voWifiEntitlementStatus() {
-        Log.d(TAG, "voWifiEntitlementStatus subId=" + subId);
+        Log.d(TAG, "checkEntitlementStatus subId=" + mSubId);
 
         ServiceEntitlementRequest.Builder requestBuilder = ServiceEntitlementRequest.builder();
         if (!TextUtils.isEmpty(mCachedAccessToken)) {
             requestBuilder.setAuthenticationToken(mCachedAccessToken);
         }
-        FcmUtils.fetchFcmToken(context, subId);
-        requestBuilder.setNotificationToken(FcmTokenStore.getToken(context, subId));
+        FcmUtils.fetchFcmToken(mContext, mSubId);
+        requestBuilder.setNotificationToken(FcmTokenStore.getToken(mContext, mSubId));
         // Set fake device info to avoid leaking
         requestBuilder.setTerminalVendor("vendorX");
         requestBuilder.setTerminalModel("modelY");
@@ -97,17 +92,12 @@ public class WfcActivationApi {
 
         XmlDoc entitlementXmlDoc = null;
         try {
-            entitlementXmlDoc =
-                    new XmlDoc(
-                            serviceEntitlement.queryEntitlementStatus(
-                                    ServiceEntitlement.APP_VOWIFI, request));
-            // While finishing the initial AuthN, save the token
-            // and to be used next time for fast AuthN.
-            entitlementXmlDoc.get(
-                        ResponseXmlNode.TOKEN,
-                        ResponseXmlAttributes.TOKEN,
-                        ServiceEntitlement.APP_VOWIFI)
-                    .ifPresent(token -> mCachedAccessToken = token);
+            String rawXml = mServiceEntitlement.queryEntitlementStatus(
+                    ImmutableList.of(ServiceEntitlement.APP_VOWIFI), request);
+            entitlementXmlDoc = new XmlDoc(rawXml);
+            // While finishing the initial AuthN, save the configs from the result doc
+            mLastEntitlementConfiguration.update(rawXml);
+            mLastEntitlementConfiguration.getToken().ifPresent(token -> mCachedAccessToken = token);
         } catch (ServiceEntitlementException e) {
             Log.e(TAG, "queryEntitlementStatus failed", e);
         }
@@ -123,17 +113,22 @@ public class WfcActivationApi {
                 ResponseXmlNode.APPLICATION,
                 ResponseXmlAttributes.SERVER_FLOW_URL,
                 ServiceEntitlement.APP_VOWIFI)
-            .ifPresent(url -> builder.setEmergencyAddressWebUrl(url));
+                .ifPresent(url -> builder.setEmergencyAddressWebUrl(url));
         doc.get(
                 ResponseXmlNode.APPLICATION,
                 ResponseXmlAttributes.SERVER_FLOW_USER_DATA,
                 ServiceEntitlement.APP_VOWIFI)
-            .ifPresent(userData -> builder.setEmergencyAddressWebData(userData));
+                .ifPresent(userData -> builder.setEmergencyAddressWebData(userData));
         return builder.build();
     }
 
     private CarrierConfig getCarrierConfig(Context context) {
-        String entitlementServiceUrl = TelephonyUtils.getEntitlementServerUrl(context, subId);
+        String entitlementServiceUrl = TelephonyUtils.getEntitlementServerUrl(context, mSubId);
         return CarrierConfig.builder().setServerUrl(entitlementServiceUrl).build();
+    }
+
+    /** Returns the name of JS controller object used in emergency address webview. */
+    public String getWebviewJsControllerName() {
+        return JS_CONTROLLER_NAME;
     }
 }

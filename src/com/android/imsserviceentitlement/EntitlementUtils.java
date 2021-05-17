@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 package com.android.imsserviceentitlement;
@@ -41,43 +41,48 @@ public class EntitlementUtils {
     private static final ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
     private static final ExecutorService DIRECT_EXECUTOR_SERVICE =
             MoreExecutors.newDirectExecutorService();
-    private static ListenableFuture<EntitlementResult> checkEntitlementFuture;
+    private static ListenableFuture<EntitlementResult> sCheckEntitlementFuture;
 
     /**
      * Whether to execute entitlementCheck in caller's thread, set to true via reflection for test.
      */
-    private static boolean useDirectExecutorForTest = false;
+    private static boolean sUseDirectExecutorForTest = false;
 
     private EntitlementUtils() {}
 
+    /**
+     * Performs the entitlement status check, and passes the result via {@link
+     * EntitlementResultCallback}.
+     */
     public static void entitlementCheck(
-            WfcActivationApi activationApi, EntitlementResultCallback callback) {
+            ImsEntitlementApi activationApi, EntitlementResultCallback callback) {
         ListeningExecutorService service =
                 MoreExecutors.listeningDecorator(
-                        useDirectExecutorForTest ? DIRECT_EXECUTOR_SERVICE : EXECUTOR_SERVICE);
-        checkEntitlementFuture = service.submit(() -> getEntitlementStatus(activationApi));
+                        sUseDirectExecutorForTest ? DIRECT_EXECUTOR_SERVICE : EXECUTOR_SERVICE);
+        sCheckEntitlementFuture = service.submit(() -> getEntitlementStatus(activationApi));
         Futures.addCallback(
-                checkEntitlementFuture,
+                sCheckEntitlementFuture,
                 new FutureCallback<EntitlementResult>() {
                     @Override
                     public void onSuccess(EntitlementResult result) {
                         callback.onEntitlementResult(result);
-                        checkEntitlementFuture = null;
+                        sCheckEntitlementFuture = null;
                     }
 
                     @Override
                     public void onFailure(Throwable t) {
                         Log.w(LOG_TAG, "get entitlement status failed.", t);
-                        checkEntitlementFuture = null;
+                        sCheckEntitlementFuture = null;
                     }
                 },
                 DIRECT_EXECUTOR_SERVICE);
     }
 
+    /** Cancels the running task of entitlement status check if exist. */
     public static void cancelEntitlementCheck() {
-        if (checkEntitlementFuture != null) {
+        if (sCheckEntitlementFuture != null) {
             Log.i(LOG_TAG, "cancel entitlement status check.");
-            checkEntitlementFuture.cancel(true);
+            sCheckEntitlementFuture.cancel(true);
         }
     }
 
@@ -87,7 +92,7 @@ public class EntitlementUtils {
      */
     @WorkerThread
     @Nullable
-    private static EntitlementResult getEntitlementStatus(WfcActivationApi activationApi) {
+    private static EntitlementResult getEntitlementStatus(ImsEntitlementApi activationApi) {
         try {
             return activationApi.checkEntitlementStatus();
         } catch (RuntimeException e) {

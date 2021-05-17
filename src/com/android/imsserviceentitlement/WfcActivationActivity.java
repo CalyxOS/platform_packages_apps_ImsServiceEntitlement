@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 package com.android.imsserviceentitlement;
@@ -33,8 +33,8 @@ public class WfcActivationActivity extends FragmentActivity implements WfcActiva
     private static final String TAG = "IMSSE-WfcActivationActivity";
 
     // Dependencies
-    private WfcActivationController wfcActivationController;
-    private WfcWebPortalFragment wfcWebPortalFragment;
+    private WfcActivationController mWfcActivationController;
+    private WfcWebPortalFragment mWfcWebPortalFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,18 +45,18 @@ public class WfcActivationActivity extends FragmentActivity implements WfcActiva
         setContentView(R.layout.activity_wfc_activation);
 
         int subId = ActivityConstants.getSubId(getIntent());
-        wfcActivationController.startFlow();
+        mWfcActivationController.startFlow();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        wfcActivationController.finish();
+        mWfcActivationController.finish();
     }
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (wfcWebPortalFragment != null && wfcWebPortalFragment.onKeyDown(keyCode, event)) {
+        if (mWfcWebPortalFragment != null && mWfcWebPortalFragment.onKeyDown(keyCode, event)) {
             return true;
         }
         return super.onKeyDown(keyCode, event);
@@ -93,11 +93,11 @@ public class WfcActivationActivity extends FragmentActivity implements WfcActiva
         runOnUiThreadIfAlive(
                 () -> {
                     FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-                    wfcWebPortalFragment = WfcWebPortalFragment.newInstance(
+                    mWfcWebPortalFragment = WfcWebPortalFragment.newInstance(
                             url,
                             postData,
                             jsControllerName);
-                    ft.replace(R.id.wfc_activation_container, wfcWebPortalFragment);
+                    ft.replace(R.id.wfc_activation_container, mWfcWebPortalFragment);
                     // commit may be executed after activity's state is saved.
                     ft.commitAllowingStateLoss();
                 });
@@ -121,7 +121,7 @@ public class WfcActivationActivity extends FragmentActivity implements WfcActiva
 
     @Override
     public WfcActivationController getController() {
-        return wfcActivationController;
+        return mWfcActivationController;
     }
 
     private void setSuwTheme() {
@@ -135,16 +135,16 @@ public class WfcActivationActivity extends FragmentActivity implements WfcActiva
     private void createDependeny() {
         Log.d(TAG, "Loading dependencies...");
         // TODO(b/177495634) Use DependencyInjector
-        if (wfcActivationController == null) {
+        if (mWfcActivationController == null) {
             // Default initialization
             Log.d(TAG, "Default WfcActivationController initialization");
             Intent startIntent = this.getIntent();
             int subId = ActivityConstants.getSubId(startIntent);
-            wfcActivationController =
+            mWfcActivationController =
                     new WfcActivationController(
                             /* context = */ this,
                             /* wfcActivationUi = */ this,
-                            new WfcActivationApi(this, subId),
+                            new ImsEntitlementApi(this, subId),
                             this.getIntent());
         }
     }

@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 package com.android.imsserviceentitlement.utils;
@@ -31,38 +31,38 @@ import androidx.annotation.Nullable;
 public class ImsUtils {
     private static final String TAG = "IMSSE-ImsUtils";
 
-    private final CarrierConfigManager carrierConfigManager;
-    private final ImsMmTelManager imsMmTelManager;
-    private final int subId;
+    private final CarrierConfigManager mCarrierConfigManager;
+    private final ImsMmTelManager mImsMmTelManager;
+    private final int mSubId;
 
     // Cache subscription id associated {@link ImsUtils} objects for reusing.
     @GuardedBy("ImsUtils.class")
-    private static SparseArray<ImsUtils> instances = new SparseArray<ImsUtils>();
+    private static SparseArray<ImsUtils> sInstances = new SparseArray<ImsUtils>();
 
     private ImsUtils(Context context, int subId) {
-        carrierConfigManager =
+        mCarrierConfigManager =
                 (CarrierConfigManager) context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        imsMmTelManager = getImsMmTelManager(context, subId);
-        this.subId = subId;
+        mImsMmTelManager = getImsMmTelManager(context, subId);
+        this.mSubId = subId;
     }
 
     /** Returns {@link ImsUtils} instance. */
     public static synchronized ImsUtils getInstance(Context context, int subId) {
-        ImsUtils instance = instances.get(subId);
+        ImsUtils instance = sInstances.get(subId);
         if (instance != null) {
             return instance;
         }
 
         instance = new ImsUtils(context, subId);
-        instances.put(subId, instance);
+        sInstances.put(subId, instance);
         return instance;
     }
 
-    /** Change persistent WFC enabled setting. */
+    /** Changes persistent WFC enabled setting. */
     public void setWfcSetting(boolean enabled, boolean force) {
         try {
             if (force) {
-                imsMmTelManager.setVoWiFiSettingEnabled(enabled);
+                mImsMmTelManager.setVoWiFiSettingEnabled(enabled);
             }
         } catch (RuntimeException e) {
             // ignore this exception, possible exception should be NullPointerException or
@@ -76,12 +76,12 @@ public class ImsUtils {
             disableWfc();
 
             // Reset WFC mode to carrier default value
-            if (carrierConfigManager != null) {
-                PersistableBundle b = carrierConfigManager.getConfigForSubId(subId);
+            if (mCarrierConfigManager != null) {
+                PersistableBundle b = mCarrierConfigManager.getConfigForSubId(mSubId);
                 if (b != null) {
-                    imsMmTelManager.setVoWiFiModeSetting(
+                    mImsMmTelManager.setVoWiFiModeSetting(
                             b.getInt(CarrierConfigManager.KEY_CARRIER_DEFAULT_WFC_IMS_MODE_INT));
-                    imsMmTelManager.setVoWiFiRoamingModeSetting(
+                    mImsMmTelManager.setVoWiFiRoamingModeSetting(
                             b.getInt(
                                     CarrierConfigManager
                                             .KEY_CARRIER_DEFAULT_WFC_IMS_ROAMING_MODE_INT));
@@ -111,7 +111,7 @@ public class ImsUtils {
     /** Returns whether WFC is enabled by user for current subId */
     public boolean isWfcEnabledByUser() {
         try {
-            return imsMmTelManager.isVoWiFiSettingEnabled();
+            return mImsMmTelManager.isVoWiFiSettingEnabled();
         } catch (RuntimeException e) {
             // ignore this exception, possible exception should be NullPointerException or
             // RemoteException.
@@ -119,6 +119,7 @@ public class ImsUtils {
         return false;
     }
 
+    /** Calls {@link #disableAndResetVoWiFiImsSettings()} in background thread. */
     public static void turnOffWfc(ImsUtils imsUtils, Runnable action) {
         new AsyncTask<Void, Void, Void>() {
             @Override

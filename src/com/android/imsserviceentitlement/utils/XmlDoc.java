@@ -11,7 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
 package com.android.imsserviceentitlement.utils;
@@ -53,15 +53,15 @@ public class XmlDoc {
     private static final String PARM_NAME = "name";
     private static final String PARM_VALUE = "value";
 
-    private final Map<String, Map<String, String>> nodesMap = new ArrayMap<>();
+    private final Map<String, Map<String, String>> mNodesMap = new ArrayMap<>();
 
     public XmlDoc(String responseBody) {
         parseXmlResponse(responseBody);
     }
 
     /** Returns param value for given node and key. */
-    public Optional<String> get(String node, String key, String appId) {
-        Map<String, String> paramsMap = nodesMap.get(combineKeyWithAppId(node, appId));
+    public Optional<String> get(String node, String key, @Nullable String appId) {
+        Map<String, String> paramsMap = mNodesMap.get(combineKeyWithAppId(node, appId));
         return Optional.ofNullable(paramsMap == null ? null : paramsMap.get(key));
     }
 
@@ -111,7 +111,7 @@ public class XmlDoc {
                 Map<String, String> paramsMap = new ArrayMap<>();
                 Element element = (Element) nodeList.item(i);
                 paramsMap.putAll(parseParams(element.getElementsByTagName(NODE_PARM)));
-                nodesMap.put(
+                mNodesMap.put(
                         combineKeyWithAppId(map.item(0).getNodeValue(), paramsMap.get(APP_ID)),
                         paramsMap);
             }

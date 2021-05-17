@@ -11,22 +11,22 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License
+ * limitations under the License.
  */
 
-package com.android.imsserviceentitlement.entitlement;
+package com.android.imsserviceentitlement.fcm;
 
-/** Interfaces of retrieving the Vowifi entitlement statues. */
-public interface VowifiStatus {
-    /** Returns {@code true} if vowifi service is available. */
-    boolean vowifiEntitled();
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
 
-    /** Returns {@code true} if the T&C or address needs to be updated. */
-    boolean serverDataMissing();
-
-    /** Returns {@code true} if the service is being provisioned. */
-    boolean inProgress();
-
-    /** Returns {@code true} if the service cannot be offered. */
-    boolean incompatible();
+/** A {@link BroadcastReceiver} that triggers FCM registration jobs. */
+public class FcmRegistrationReceiver extends BroadcastReceiver {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        String action = intent.getAction();
+        if (Intent.ACTION_BOOT_COMPLETED.equals(action)) {
+            FcmRegistrationService.enqueueJob(context);
+        }
+    }
 }
