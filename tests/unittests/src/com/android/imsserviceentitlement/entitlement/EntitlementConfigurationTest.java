@@ -50,6 +50,24 @@ public class EntitlementConfigurationTest {
                     + "        <parm name=\"EntitlementStatus\" value=\"0\"/>\n"
                     + "    </characteristic>\n"
                     + "</wap-provisioningdoc>\n";
+    private static final String RAW_XML_NO_TOKEN_VALIDITY =
+            "<wap-provisioningdoc version=\"1.1\">\n"
+                    + "    <characteristic type=\"VERS\">\n"
+                    + "        <parm name=\"version\" value=\"1\"/>\n"
+                    + "        <parm name=\"validity\" value=\"1728000\"/>\n"
+                    + "    </characteristic>\n"
+                    + "    <characteristic type=\"TOKEN\">\n"
+                    + "        <parm name=\"token\" value=\"kZYfCEpSsMr88KZVmab5UsZVzl+nWSsX\"/>\n"
+                    + "    </characteristic>\n"
+                    + "    <characteristic type=\"APPLICATION\">\n"
+                    + "        <parm name=\"AppID\" value=\"ap2004\"/>\n"
+                    + "        <parm name=\"EntitlementStatus\" value=\"1\"/>\n"
+                    + "    </characteristic>\n"
+                    + "    <characteristic type=\"APPLICATION\">\n"
+                    + "        <parm name=\"AppID\" value=\"ap2003\"/>\n"
+                    + "        <parm name=\"EntitlementStatus\" value=\"0\"/>\n"
+                    + "    </characteristic>\n"
+                    + "</wap-provisioningdoc>\n";
     private static final int SUB_ID = 1;
 
     private Context mContext;
@@ -86,5 +104,13 @@ public class EntitlementConfigurationTest {
         assertThat(mConfiguration.getToken().isPresent()).isFalse();
         assertThat(mConfiguration.getTokenValidity()).isEqualTo(0);
         assertThat(mConfiguration.entitlementValidation()).isEqualTo(ClientBehavior.NEEDS_TO_RESET);
+    }
+
+    @Test
+    public void updateConfigurations_noTokenValidity_tokenValid() {
+        mConfiguration.update(RAW_XML_NO_TOKEN_VALIDITY);
+
+        assertThat(mConfiguration.getToken().get()).isEqualTo("kZYfCEpSsMr88KZVmab5UsZVzl+nWSsX");
+        assertThat(mConfiguration.getTokenValidity()).isEqualTo(0);
     }
 }
