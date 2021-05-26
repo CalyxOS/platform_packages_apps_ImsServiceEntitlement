@@ -39,22 +39,20 @@ public class WfcWebPortalFragment extends Fragment {
 
     private static final String KEY_URL_STRING = "url";
     private static final String KEY_POST_DATA_STRING = "post_data";
-    private static final String KEY_JS_CALLBACK_OBJECT_STRING = "js_callback_object";
-
+    // Javascript object associated with the webview callback functions. See TS.43 v5.0 section 3.4
+    private static final String JS_CONTROLLER_NAME = "VoWiFiWebServiceFlow";
     private static final String URL_WITH_PDF_FILE_EXTENSION = ".pdf";
 
     private WebView mWebView;
     private boolean mFinishFlow = false;
 
     /** Public static constructor */
-    public static WfcWebPortalFragment newInstance(
-            String url, String postData, String jsControllerName) {
+    public static WfcWebPortalFragment newInstance(String url, String postData) {
         WfcWebPortalFragment frag = new WfcWebPortalFragment();
 
         Bundle args = new Bundle();
         args.putString(KEY_URL_STRING, url);
         args.putString(KEY_POST_DATA_STRING, postData);
-        args.putString(KEY_JS_CALLBACK_OBJECT_STRING, jsControllerName);
         frag.setArguments(args);
 
         return frag;
@@ -69,7 +67,6 @@ public class WfcWebPortalFragment extends Fragment {
         Log.d(TAG, "Webview arguments: " + arguments);
         String url = arguments.getString(KEY_URL_STRING, "");
         String postData = arguments.getString(KEY_POST_DATA_STRING, "");
-        String jsCallbackObject = arguments.getString(KEY_JS_CALLBACK_OBJECT_STRING, "");
 
         ProgressBar spinner = v.findViewById(R.id.loadingbar);
         mWebView = v.findViewById(R.id.webview);
@@ -106,7 +103,7 @@ public class WfcWebPortalFragment extends Fragment {
                         }
                     }
                 });
-        mWebView.addJavascriptInterface(new JsInterface(getActivity()), jsCallbackObject);
+        mWebView.addJavascriptInterface(new JsInterface(getActivity()), JS_CONTROLLER_NAME);
         WebSettings settings = mWebView.getSettings();
         settings.setDomStorageEnabled(true);
         settings.setJavaScriptEnabled(true);
