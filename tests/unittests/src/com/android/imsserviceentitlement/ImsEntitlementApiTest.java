@@ -18,10 +18,13 @@ package com.android.imsserviceentitlement;
 
 import static com.android.imsserviceentitlement.entitlement.EntitlementConfiguration.ClientBehavior.NEEDS_TO_RESET;
 import static com.android.imsserviceentitlement.entitlement.EntitlementConfiguration.ClientBehavior.VALID_DURING_VALIDITY;
+import static com.android.libraries.entitlement.ServiceEntitlementException.ERROR_HTTP_STATUS_NOT_SUCCESS;
+
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.content.Context;
@@ -33,6 +36,8 @@ import com.android.imsserviceentitlement.entitlement.EntitlementConfiguration;
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
 import com.android.imsserviceentitlement.fcm.FcmTokenStore;
 import com.android.libraries.entitlement.ServiceEntitlement;
+import com.android.libraries.entitlement.ServiceEntitlementException;
+import com.android.libraries.entitlement.ServiceEntitlementRequest;
 
 import com.google.common.collect.ImmutableList;
 
@@ -48,6 +53,7 @@ import org.mockito.junit.MockitoRule;
 public class ImsEntitlementApiTest {
     @Rule public final MockitoRule rule = MockitoJUnit.rule();
     @Mock private ServiceEntitlement mMockServiceEntitlement;
+    @Mock private EntitlementConfiguration mMockEntitlementConfiguration;
 
     private static final int SUB_ID = 1;
     private static final String FCM_TOKEN = "FCM_TOKEN";
@@ -66,6 +72,21 @@ public class ImsEntitlementApiTest {
                     + "        <parm name=\"EntitlementStatus\" value=\"1\"/>\n"
                     + "    </characteristic>\n"
                     + "</wap-provisioningdoc>\n";
+    private static final String RAW_XML_NEW_TOKEN =
+            "<wap-provisioningdoc version=\"1.1\">\n"
+                    + "    <characteristic type=\"VERS\">\n"
+                    + "        <parm name=\"version\" value=\"1\"/>\n"
+                    + "        <parm name=\"validity\" value=\"1728000\"/>\n"
+                    + "    </characteristic>\n"
+                    + "    <characteristic type=\"TOKEN\">\n"
+                    + "        <parm name=\"token\" value=\"NEW_TOKEN\"/>\n"
+                    + "        <parm name=\"validity\" value=\"3600\"/>\n"
+                    + "    </characteristic>\n"
+                    + "    <characteristic type=\"APPLICATION\">\n"
+                    + "        <parm name=\"AppID\" value=\"ap2004\"/>\n"
+                    + "        <parm name=\"EntitlementStatus\" value=\"1\"/>\n"
+                    + "    </characteristic>\n"
+                    + "</wap-provisioningdoc>\n";
 
     private final Context mContext = ApplicationProvider.getApplicationContext();
     private final EntitlementConfiguration mEntitlementConfiguration =
@@ -75,13 +96,14 @@ public class ImsEntitlementApiTest {
 
     @Before
     public void setUp() {
+        FcmTokenStore.setToken(mContext, SUB_ID, FCM_TOKEN);
         mImsEntitlementApi =
                 new ImsEntitlementApi(
                         mContext,
                         SUB_ID,
                         mMockServiceEntitlement,
                         mEntitlementConfiguration);
-        FcmTokenStore.setToken(mContext, SUB_ID, FCM_TOKEN);
+        mEntitlementConfiguration.reset();
     }
 
     @Test
@@ -97,7 +119,8 @@ public class ImsEntitlementApiTest {
     @Test
     public void checkEntitlementStatus_verifyConfigs() throws Exception {
         when(mMockServiceEntitlement.queryEntitlementStatus(
-                eq(ImmutableList.of(ServiceEntitlement.APP_VOWIFI)), any())).thenReturn(RAW_XML);
+                eq(ImmutableList.of(ServiceEntitlement.APP_VOWIFI)),
+                any())).thenReturn(RAW_XML);
 
         EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
 
@@ -125,5 +148,65 @@ public class ImsEntitlementApiTest {
         assertThat(mEntitlementConfiguration.getToken().isPresent()).isFalse();
         assertThat(mEntitlementConfiguration.getTokenValidity()).isEqualTo(0);
         assertThat(mEntitlementConfiguration.entitlementValidation()).isEqualTo(NEEDS_TO_RESET);
+    }
+
+    @Test
+    public void checkEntitlementStatus_httpResponse511_dataStoreReset() throws Exception {
+        ImsEntitlementApi imsEntitlementApi =
+                new ImsEntitlementApi(
+                        mContext,
+                        SUB_ID,
+                        mMockServiceEntitlement,
+                        mMockEntitlementConfiguration);
+        when(mMockServiceEntitlement.queryEntitlementStatus(
+                eq(ImmutableList.of(ServiceEntitlement.APP_VOWIFI)), any()))
+                .thenThrow(
+                        new ServiceEntitlementException(
+                                ERROR_HTTP_STATUS_NOT_SUCCESS, 511, "Invalid connection response"));
+
+        EntitlementResult result = imsEntitlementApi.checkEntitlementStatus();
+
+        verify(mMockEntitlementConfiguration).reset();
+        assertThat(result).isNull();
+    }
+
+    @Test
+    public void checkEntitlementStatus_httpResponse511_fullAuthnDone() throws Exception {
+        ImsEntitlementApi imsEntitlementApi =
+                new ImsEntitlementApi(
+                        mContext,
+                        SUB_ID,
+                        mMockServiceEntitlement,
+                        mEntitlementConfiguration);
+        mEntitlementConfiguration.update(RAW_XML);
+        // While perform fast-authn, throws exception with code 511
+        when(mMockServiceEntitlement.queryEntitlementStatus(
+                eq(ImmutableList.of(ServiceEntitlement.APP_VOWIFI)),
+                eq(authenticationRequest("kZYfCEpSsMr88KZVmab5UsZVzl+nWSsX"))))
+                .thenThrow(
+                        new ServiceEntitlementException(
+                                ERROR_HTTP_STATUS_NOT_SUCCESS, 511, "Invalid connection response"));
+        // While perform full-authn, return the result
+        when(mMockServiceEntitlement.queryEntitlementStatus(
+                eq(ImmutableList.of(ServiceEntitlement.APP_VOWIFI)),
+                eq(authenticationRequest(null))))
+                .thenReturn(RAW_XML_NEW_TOKEN);
+
+        EntitlementResult result = imsEntitlementApi.checkEntitlementStatus();
+
+        assertThat(result).isNotNull();
+        assertThat(mEntitlementConfiguration.getToken().get()).isEqualTo("NEW_TOKEN");
+    }
+
+    private ServiceEntitlementRequest authenticationRequest(String token) {
+        ServiceEntitlementRequest.Builder requestBuilder = ServiceEntitlementRequest.builder();
+        if (token != null) {
+            requestBuilder.setAuthenticationToken(token);
+        }
+        requestBuilder.setNotificationToken(FcmTokenStore.getToken(mContext, SUB_ID));
+        requestBuilder.setTerminalVendor("vendorX");
+        requestBuilder.setTerminalModel("modelY");
+        requestBuilder.setTerminalSoftwareVersion("versionZ");
+        return requestBuilder.build();
     }
 }

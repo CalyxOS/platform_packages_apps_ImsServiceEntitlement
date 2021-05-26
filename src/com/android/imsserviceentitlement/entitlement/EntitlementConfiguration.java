@@ -24,13 +24,14 @@ import com.android.imsserviceentitlement.utils.XmlDoc;
 import com.android.libraries.entitlement.ServiceEntitlement;
 
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /** Provides the entitlement characteristic which stored from previous query. */
 public class EntitlementConfiguration {
     /** Default value of version for VERS characteristic. */
     private static final int DEFAULT_VERSION = 0;
     /** Default value of validity for VERS and TOKEN characteristics. */
-    private static final int DEFAULT_VALIDITY = 0;
+    private static final long DEFAULT_VALIDITY = 0;
     /** Default value of VoLTE/VoWifi/SMSoverIP entitlemenet status. */
     private static final int INCOMPATIBLE_STATE = 2;
 
@@ -88,21 +89,45 @@ public class EntitlementConfiguration {
                 .orElse(INCOMPATIBLE_STATE);
     }
 
-    /** Returns token stored in the {@link EntitlementCharacteristicDataStore}. */
+    /**
+     * Returns token stored in the {@link EntitlementCharacteristicDataStore} if it is in validity
+     * period. Returns {@link Optional#empty()} if the token was expired or the value of token
+     * validity not positive.
+     */
     public Optional<String> getToken() {
-        return mXmlDoc.get(ResponseXmlNode.TOKEN, ResponseXmlAttributes.TOKEN, null);
+        return isTokenInValidityPeriod()
+                ? mXmlDoc.get(ResponseXmlNode.TOKEN, ResponseXmlAttributes.TOKEN, null)
+                : Optional.empty();
+    }
+
+    private boolean isTokenInValidityPeriod() {
+        long queryTimeMillis = mConfigutationsDataStore.getQueryTimeMillis();
+        long tokenValidityMillis = TimeUnit.SECONDS.toMillis(getTokenValidity());
+
+        if (queryTimeMillis <= 0) {
+            // False if the query time not been set.
+            return false;
+        }
+
+        // When the token validity is set to 0, the Entitlement Client shall store the token without
+        // any limitation of duration.
+        if (tokenValidityMillis <= 0) {
+            return true;
+        }
+
+        return System.currentTimeMillis() - queryTimeMillis < tokenValidityMillis;
     }
 
     /**
-     * Returns the Validity of the token expiry duration. Validity is defined in seconds from the
-     * time the Entitlement Client receives it. If no data exist then returns default value 0.
+     * Returns the validity of the token, in seconds. The validity is counted from the time it is
+     * received by the client. If no data exist then returns default value 0.
      */
-    public int getTokenValidity() {
+    public long getTokenValidity() {
         return mXmlDoc.get(
                 ResponseXmlNode.TOKEN,
                 ResponseXmlAttributes.VALIDITY,
                 null)
-                .map(Integer::parseInt)
+                .map(Long::parseLong)
                 .orElse(DEFAULT_VALIDITY);
     }
 
@@ -137,11 +162,11 @@ public class EntitlementConfiguration {
                 null)
                 .map(Integer::parseInt)
                 .orElse(DEFAULT_VERSION);
-        int validity = mXmlDoc.get(
+        long validity = mXmlDoc.get(
                 ResponseXmlNode.VERS,
                 ResponseXmlAttributes.VALIDITY,
                 null)
-                .map(Integer::parseInt)
+                .map(Long::parseLong)
                 .orElse(DEFAULT_VALIDITY);
 
         if (version > 0 && validity > 0) {

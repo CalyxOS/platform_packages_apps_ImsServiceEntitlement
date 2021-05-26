@@ -17,7 +17,6 @@
 package com.android.imsserviceentitlement;
 
 import android.content.Context;
-import android.text.TextUtils;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -44,13 +43,15 @@ public class ImsEntitlementApi {
     private static final String TAG = "IMSSE-ImsEntitlementApi";
 
     private static final String JS_CONTROLLER_NAME = "VoWiFiWebServiceFlow";
+    private static final int RESPONSE_TOKEN_EXPIRED = 511;
+    private static final int AUTHENTICATION_RETRIES = 1;
 
     private final Context mContext;
     private final int mSubId;
     private final ServiceEntitlement mServiceEntitlement;
     private final EntitlementConfiguration mLastEntitlementConfiguration;
 
-    private String mCachedAccessToken;
+    private int mRetryFullAuthenticationCount = AUTHENTICATION_RETRIES;
 
     public ImsEntitlementApi(Context context, int subId) {
         this.mContext = context;
@@ -61,7 +62,10 @@ public class ImsEntitlementApi {
     }
 
     @VisibleForTesting
-    ImsEntitlementApi(Context context, int subId, ServiceEntitlement serviceEntitlement,
+    ImsEntitlementApi(
+            Context context,
+            int subId,
+            ServiceEntitlement serviceEntitlement,
             EntitlementConfiguration lastEntitlementConfiguration) {
         this.mContext = context;
         this.mSubId = subId;
@@ -77,11 +81,9 @@ public class ImsEntitlementApi {
     @Nullable
     public EntitlementResult checkEntitlementStatus() {
         Log.d(TAG, "checkEntitlementStatus subId=" + mSubId);
-
         ServiceEntitlementRequest.Builder requestBuilder = ServiceEntitlementRequest.builder();
-        if (!TextUtils.isEmpty(mCachedAccessToken)) {
-            requestBuilder.setAuthenticationToken(mCachedAccessToken);
-        }
+        mLastEntitlementConfiguration.getToken().ifPresent(
+                token -> requestBuilder.setAuthenticationToken(token));
         FcmUtils.fetchFcmToken(mContext, mSubId);
         requestBuilder.setNotificationToken(FcmTokenStore.getToken(mContext, mSubId));
         // Set fake device info to avoid leaking
@@ -91,14 +93,28 @@ public class ImsEntitlementApi {
         ServiceEntitlementRequest request = requestBuilder.build();
 
         XmlDoc entitlementXmlDoc = null;
+
         try {
             String rawXml = mServiceEntitlement.queryEntitlementStatus(
                     ImmutableList.of(ServiceEntitlement.APP_VOWIFI), request);
             entitlementXmlDoc = new XmlDoc(rawXml);
-            // While finishing the initial AuthN, save the configs from the result doc
             mLastEntitlementConfiguration.update(rawXml);
-            mLastEntitlementConfiguration.getToken().ifPresent(token -> mCachedAccessToken = token);
+            // Reset the retry count if no exception from queryEntitlementStatus()
+            mRetryFullAuthenticationCount = AUTHENTICATION_RETRIES;
         } catch (ServiceEntitlementException e) {
+            if (e.getErrorCode()
+                    == ServiceEntitlementException.ERROR_HTTP_STATUS_NOT_SUCCESS
+                    && e.getHttpStatus() == RESPONSE_TOKEN_EXPIRED) {
+                if (mRetryFullAuthenticationCount <= 0) {
+                    Log.d(TAG, "Ran out of the retry count, stop query status.");
+                    return null;
+                }
+                Log.d(TAG, "Server asking for full authentication, retry the query.");
+                // Clean up the cached data and perform full authentication next query.
+                mLastEntitlementConfiguration.reset();
+                mRetryFullAuthenticationCount--;
+                return checkEntitlementStatus();
+            }
             Log.e(TAG, "queryEntitlementStatus failed", e);
         }
         return entitlementXmlDoc == null ? null : toEntitlementResult(entitlementXmlDoc);
