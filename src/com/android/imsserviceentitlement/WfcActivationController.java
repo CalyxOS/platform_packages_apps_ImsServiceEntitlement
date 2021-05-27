@@ -238,14 +238,11 @@ public class WfcActivationController {
             if (vowifiStatus.serverDataMissing()) {
                 if (!TextUtils.isEmpty(result.getTermsAndConditionsWebUrl())) {
                     mActivationUi.showWebview(
-                            result.getTermsAndConditionsWebUrl(),
-                            /* postData= */ null,
-                            mImsEntitlementApi.getWebviewJsControllerName());
+                            result.getTermsAndConditionsWebUrl(), /* postData= */ null);
                 } else {
                     mActivationUi.showWebview(
                             result.getEmergencyAddressWebUrl(),
-                            result.getEmergencyAddressWebData(),
-                            mImsEntitlementApi.getWebviewJsControllerName());
+                            result.getEmergencyAddressWebData());
                 }
             } else if (vowifiStatus.incompatible()) {
                 finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__INCOMPATIBLE);
@@ -265,14 +262,10 @@ public class WfcActivationController {
             int launchIntention = ActivityConstants.getLaunchIntention(mStartIntent);
             if (launchIntention == ActivityConstants.LAUNCH_APP_SHOW_TC) {
                 mActivationUi.showWebview(
-                        result.getTermsAndConditionsWebUrl(),
-                        /* postData= */ null,
-                        mImsEntitlementApi.getWebviewJsControllerName());
+                        result.getTermsAndConditionsWebUrl(), /* postData= */ null);
             } else {
                 mActivationUi.showWebview(
-                        result.getEmergencyAddressWebUrl(),
-                        result.getEmergencyAddressWebData(),
-                        mImsEntitlementApi.getWebviewJsControllerName());
+                        result.getEmergencyAddressWebUrl(), result.getEmergencyAddressWebData());
             }
         } else {
             if (vowifiStatus.incompatible()) {
