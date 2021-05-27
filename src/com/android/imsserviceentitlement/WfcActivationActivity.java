@@ -89,14 +89,11 @@ public class WfcActivationActivity extends FragmentActivity implements WfcActiva
     }
 
     @Override
-    public boolean showWebview(String url, String postData, String jsControllerName) {
+    public boolean showWebview(String url, String postData) {
         runOnUiThreadIfAlive(
                 () -> {
                     FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-                    mWfcWebPortalFragment = WfcWebPortalFragment.newInstance(
-                            url,
-                            postData,
-                            jsControllerName);
+                    mWfcWebPortalFragment = WfcWebPortalFragment.newInstance(url, postData);
                     ft.replace(R.id.wfc_activation_container, mWfcWebPortalFragment);
                     // commit may be executed after activity's state is saved.
                     ft.commitAllowingStateLoss();
