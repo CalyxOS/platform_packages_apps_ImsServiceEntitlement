@@ -163,7 +163,7 @@ public class TelephonyUtils {
      * Returns true if app needs to do IMS (VoLTE/VoWiFi/SMSoIP) provisioning in the background
      * or false if it doesn't need to do.
      */
-    public static boolean getImsProvisioning(Context context, int subId) {
+    public static boolean isImsProvisioningRequired(Context context, int subId) {
         return getConfigForSubId(context, subId).getBoolean(
                 CarrierConfigManager.ImsServiceEntitlement.KEY_IMS_PROVISIONING_BOOL,
                 false
