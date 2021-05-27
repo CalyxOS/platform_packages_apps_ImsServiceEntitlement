@@ -35,7 +35,7 @@ public interface WfcActivationUi {
             @StringRes int secondaryButtonText);
 
     /** Shows the full screen webview */
-    boolean showWebview(String url, String postData, String jsControllerName);
+    boolean showWebview(String url, String postData);
 
     /**
      * Finishes the activity with {@code result}:
