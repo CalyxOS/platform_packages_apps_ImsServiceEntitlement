@@ -75,7 +75,6 @@ public class WfcActivationControllerTest {
     public void setUp() throws Exception {
         mContext = spy(ApplicationProvider.getApplicationContext());
 
-        when(mActivationApi.getWebviewJsControllerName()).thenReturn(WEBVIEW_JS_CONTROLLER_NAME);
         when(mContext.getSystemService(TelephonyManager.class)).thenReturn(mTelephonyManager);
         when(mTelephonyManager.createForSubscriptionId(SUB_ID)).thenReturn(mTelephonyManager);
         setNetworkConnected(true);
@@ -193,11 +192,7 @@ public class WfcActivationControllerTest {
 
         mWfcActivationController.evaluateEntitlementStatus();
 
-        verify(mActivationUi)
-                .showWebview(
-                        EMERGENCY_ADDRESS_WEB_URL,
-                        EMERGENCY_ADDRESS_WEB_DATA,
-                        WEBVIEW_JS_CONTROLLER_NAME);
+        verify(mActivationUi).showWebview(EMERGENCY_ADDRESS_WEB_URL, EMERGENCY_ADDRESS_WEB_DATA);
     }
 
     @Test
