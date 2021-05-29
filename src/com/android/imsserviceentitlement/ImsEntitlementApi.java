@@ -42,7 +42,6 @@ import com.google.common.collect.ImmutableList;
 public class ImsEntitlementApi {
     private static final String TAG = "IMSSE-ImsEntitlementApi";
 
-    private static final String JS_CONTROLLER_NAME = "VoWiFiWebServiceFlow";
     private static final int RESPONSE_TOKEN_EXPIRED = 511;
     private static final int AUTHENTICATION_RETRIES = 1;
 
@@ -141,10 +140,5 @@ public class ImsEntitlementApi {
     private CarrierConfig getCarrierConfig(Context context) {
         String entitlementServiceUrl = TelephonyUtils.getEntitlementServerUrl(context, mSubId);
         return CarrierConfig.builder().setServerUrl(entitlementServiceUrl).build();
-    }
-
-    /** Returns the name of JS controller object used in emergency address webview. */
-    public String getWebviewJsControllerName() {
-        return JS_CONTROLLER_NAME;
     }
 }
