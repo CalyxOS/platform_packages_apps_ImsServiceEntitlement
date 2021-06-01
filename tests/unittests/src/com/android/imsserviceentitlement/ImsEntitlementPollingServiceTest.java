@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 import android.app.job.JobParameters;
 import android.content.Context;
 import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.util.SparseArray;
@@ -31,8 +32,14 @@ import androidx.test.core.app.ApplicationProvider;
 import androidx.test.runner.AndroidJUnit4;
 
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
-import com.android.imsserviceentitlement.entitlement.VowifiStatus;
 import com.android.imsserviceentitlement.job.JobManager;
+import com.android.imsserviceentitlement.ts43.Ts43SmsOverIpStatus;
+import com.android.imsserviceentitlement.ts43.Ts43VolteStatus;
+import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus;
+import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.AddrStatus;
+import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.EntitlementStatus;
+import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.ProvStatus;
+import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.TcStatus;
 import com.android.imsserviceentitlement.utils.ImsUtils;
 
 import org.junit.Before;
@@ -57,6 +64,7 @@ public class ImsEntitlementPollingServiceTest {
     @Mock private SubscriptionManager mSubscriptionManager;
     @Mock private SubscriptionInfo mSubscriptionInfo;
     @Mock private ImsEntitlementApi mImsEntitlementApi;
+    @Mock private CarrierConfigManager mCarrierConfigManager;
 
     private ImsEntitlementPollingService mService;
 
@@ -74,6 +82,7 @@ public class ImsEntitlementPollingServiceTest {
         setupImsUtils();
         setJobParameters();
         setWfcEnabledByUser(true);
+        setImsProvisioningBool(false);
     }
 
     @Test
@@ -109,6 +118,42 @@ public class ImsEntitlementPollingServiceTest {
         verify(mImsUtils, never()).disableWfc();
     }
 
+    @Test
+    public void doEntitlementCheck_shouldTurnOffImsApps_setAllProvisionedFalse() throws Exception {
+        setImsProvisioningBool(true);
+        EntitlementResult entitlementResult = getImsEntitlementResult(
+                sDisableVoWiFi,
+                sDisableVoLte,
+                sDisableSmsoverip
+        );
+        when(mImsEntitlementApi.checkEntitlementStatus()).thenReturn(entitlementResult);
+
+        mService.onStartJob(mJobParameters);
+        mService.mOngoingTask.get(); // wait for job finish.
+
+        verify(mImsUtils).setVolteProvisioned(false);
+        verify(mImsUtils).setVowifiProvisioned(false);
+        verify(mImsUtils).setSmsoipProvisioned(false);
+    }
+
+    @Test
+    public void doEntitlementCheck_shouldTurnOnImsApps_setAllProvisionedTrue() throws Exception {
+        setImsProvisioningBool(true);
+        EntitlementResult entitlementResult = getImsEntitlementResult(
+                sEnableVoWiFi,
+                sEnableVoLte,
+                sEnableSmsoverip
+        );
+        when(mImsEntitlementApi.checkEntitlementStatus()).thenReturn(entitlementResult);
+
+        mService.onStartJob(mJobParameters);
+        mService.mOngoingTask.get(); // wait for job finish.
+
+        verify(mImsUtils).setVolteProvisioned(true);
+        verify(mImsUtils).setVowifiProvisioned(true);
+        verify(mImsUtils).setSmsoipProvisioned(true);
+    }
+
     private void setActivedSubscription() {
         when(mSubscriptionInfo.getSimSlotIndex()).thenReturn(SLOT_ID);
         when(mSubscriptionManager.getActiveSubscriptionInfo(SUB_ID)).thenReturn(mSubscriptionInfo);
@@ -133,59 +178,70 @@ public class ImsEntitlementPollingServiceTest {
         bundle.putInt(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, SUB_ID);
         bundle.putInt(JobManager.EXTRA_SLOT_ID, SLOT_ID);
         when(mJobParameters.getExtras()).thenReturn(bundle);
-        when(mJobParameters.getJobId()).thenReturn(JobManager.QUERY_ENTITLEMEN_STATUS_JOB_ID);
+        when(mJobParameters.getJobId()).thenReturn(JobManager.QUERY_ENTITLEMENT_STATUS_JOB_ID);
     }
 
-    private static EntitlementResult getEntitlementResult(VowifiStatus vowifiStatus) {
+    private void setImsProvisioningBool(boolean provisioning) {
+        PersistableBundle carrierConfig = new PersistableBundle();
+        carrierConfig.putBoolean(
+                CarrierConfigManager.ImsServiceEntitlement.KEY_IMS_PROVISIONING_BOOL,
+                provisioning
+        );
+        when(mCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(carrierConfig);
+        when(mContext.getSystemService(CarrierConfigManager.class))
+                .thenReturn(mCarrierConfigManager);
+    }
+
+    private static EntitlementResult getEntitlementResult(Ts43VowifiStatus vowifiStatus) {
         return EntitlementResult.builder()
-                .setSuccess(true)
                 .setVowifiStatus(vowifiStatus)
                 .build();
     }
 
-    private static final VowifiStatus sDisableVoWiFi =
-            new VowifiStatus() {
-                @Override
-                public boolean vowifiEntitled() {
-                    return true;
-                }
+    private static EntitlementResult getImsEntitlementResult(
+            Ts43VowifiStatus vowifiStatus,
+            Ts43VolteStatus volteStatus,
+            Ts43SmsOverIpStatus smsOverIpStatus) {
+        return EntitlementResult.builder()
+                .setVowifiStatus(vowifiStatus)
+                .setVolteStatus(volteStatus)
+                .setSmsoveripStatus(smsOverIpStatus)
+                .build();
+    }
 
-                @Override
-                public boolean serverDataMissing() {
-                    return true;
-                }
+    private static final Ts43VowifiStatus sDisableVoWiFi =
+            Ts43VowifiStatus.builder()
+                    .setEntitlementStatus(EntitlementStatus.DISABLED)
+                    .setTcStatus(TcStatus.NOT_AVAILABLE)
+                    .setAddrStatus(AddrStatus.NOT_AVAILABLE)
+                    .setProvStatus(ProvStatus.NOT_PROVISIONED)
+                    .build();
 
-                @Override
-                public boolean inProgress() {
-                    return true;
-                }
+    private static final Ts43VowifiStatus sEnableVoWiFi =
+            Ts43VowifiStatus.builder()
+                    .setEntitlementStatus(EntitlementStatus.ENABLED)
+                    .setTcStatus(TcStatus.AVAILABLE)
+                    .setAddrStatus(AddrStatus.AVAILABLE)
+                    .setProvStatus(ProvStatus.PROVISIONED)
+                    .build();
 
-                @Override
-                public boolean incompatible() {
-                    return true;
-                }
-            };
+    private static final Ts43VolteStatus sDisableVoLte =
+            Ts43VolteStatus.builder()
+                    .setEntitlementStatus(EntitlementStatus.DISABLED)
+                    .build();
 
-    private static final VowifiStatus sEnableVoWiFi =
-            new VowifiStatus() {
-                @Override
-                public boolean vowifiEntitled() {
-                    return true;
-                }
+    private static final Ts43VolteStatus sEnableVoLte =
+            Ts43VolteStatus.builder()
+                    .setEntitlementStatus(EntitlementStatus.ENABLED)
+                    .build();
 
-                @Override
-                public boolean serverDataMissing() {
-                    return false;
-                }
+    private static final Ts43SmsOverIpStatus sDisableSmsoverip =
+            Ts43SmsOverIpStatus.builder()
+                    .setEntitlementStatus(EntitlementStatus.DISABLED)
+                    .build();
 
-                @Override
-                public boolean inProgress() {
-                    return false;
-                }
-
-                @Override
-                public boolean incompatible() {
-                    return false;
-                }
-            };
+    private static final Ts43SmsOverIpStatus sEnableSmsoverip =
+            Ts43SmsOverIpStatus.builder()
+                    .setEntitlementStatus(EntitlementStatus.ENABLED)
+                    .build();
 }
