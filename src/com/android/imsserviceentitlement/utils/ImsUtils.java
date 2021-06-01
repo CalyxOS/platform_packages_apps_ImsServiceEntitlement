@@ -21,6 +21,7 @@ import android.os.AsyncTask;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ims.ImsMmTelManager;
+import android.telephony.ims.ProvisioningManager;
 import android.util.Log;
 import android.util.SparseArray;
 
@@ -33,7 +34,29 @@ public class ImsUtils {
 
     private final CarrierConfigManager mCarrierConfigManager;
     private final ImsMmTelManager mImsMmTelManager;
+    private final ProvisioningManager mProvisioningManager;
     private final int mSubId;
+
+    /**
+     * Turns Volte provisioning status ON/OFF.
+     * Value is in Integer format. ON (1), OFF(0).
+     * Key is from {@link ProvisioningManager#KEY_VOLTE_PROVISIONING_STATUS}.
+     */
+    private static final int KEY_VOLTE_PROVISIONING_STATUS = 10;
+
+    /**
+     * Turns SMS over IP ON/OFF on the device.
+     * Value is in Integer format. ON (1), OFF(0).
+     * Key is from {@link ProvisioningManager#KEY_SMS_OVER_IP_ENABLED}.
+     */
+    private static final int KEY_SMS_OVER_IP_ENABLED = 14;
+
+    /**
+     * Enable voice over wifi on device.
+     * Value is in Integer format. Enabled (1), or Disabled (0).
+     * Key is from {@link ProvisioningManager#KEY_VOICE_OVER_WIFI_ENABLED_OVERRIDE}.
+     */
+    private static final int KEY_VOICE_OVER_WIFI_ENABLED_OVERRIDE = 28;
 
     // Cache subscription id associated {@link ImsUtils} objects for reusing.
     @GuardedBy("ImsUtils.class")
@@ -43,6 +66,7 @@ public class ImsUtils {
         mCarrierConfigManager =
                 (CarrierConfigManager) context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         mImsMmTelManager = getImsMmTelManager(context, subId);
+        mProvisioningManager = getProvisioningManager(subId);
         this.mSubId = subId;
     }
 
@@ -64,6 +88,45 @@ public class ImsUtils {
             if (force) {
                 mImsMmTelManager.setVoWiFiSettingEnabled(enabled);
             }
+        } catch (RuntimeException e) {
+            // ignore this exception, possible exception should be NullPointerException or
+            // RemoteException.
+        }
+    }
+
+    /** Sets whether VoWiFi is provisioned. */
+    public void setVowifiProvisioned(boolean value) {
+        try {
+            mProvisioningManager.setProvisioningIntValue(
+                    KEY_VOICE_OVER_WIFI_ENABLED_OVERRIDE, value
+                            ? ProvisioningManager.PROVISIONING_VALUE_ENABLED
+                            : ProvisioningManager.PROVISIONING_VALUE_DISABLED);
+        } catch (RuntimeException e) {
+            // ignore this exception, possible exception should be NullPointerException or
+            // RemoteException.
+        }
+    }
+
+    /** Sets whether Volte is provisioned. */
+    public void setVolteProvisioned(boolean value) {
+        try {
+            mProvisioningManager.setProvisioningIntValue(
+                    KEY_VOLTE_PROVISIONING_STATUS, value
+                            ? ProvisioningManager.PROVISIONING_VALUE_ENABLED
+                            : ProvisioningManager.PROVISIONING_VALUE_DISABLED);
+        } catch (RuntimeException e) {
+            // ignore this exception, possible exception should be NullPointerException or
+            // RemoteException.
+        }
+    }
+
+    /** Sets whether SMSoIP is provisioned. */
+    public void setSmsoipProvisioned(boolean value) {
+        try {
+            mProvisioningManager.setProvisioningIntValue(
+                    KEY_SMS_OVER_IP_ENABLED, value
+                            ? ProvisioningManager.PROVISIONING_VALUE_ENABLED
+                            : ProvisioningManager.PROVISIONING_VALUE_DISABLED);
         } catch (RuntimeException e) {
             // ignore this exception, possible exception should be NullPointerException or
             // RemoteException.
@@ -105,6 +168,20 @@ public class ImsUtils {
             Log.e(TAG, "Can't get ImsMmTelManager, IllegalArgumentException: subId = " + subId);
         }
 
+        return null;
+    }
+
+    /**
+     * Returns {@link ProvisioningManager} with specific subscription id.
+     * Returns {@code null} if provided subscription id invalid.
+     */
+    @Nullable
+    public static ProvisioningManager getProvisioningManager(int subId) {
+        try {
+            return ProvisioningManager.createForSubscriptionId(subId);
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "Can't get ProvisioningManager, IllegalArgumentException: subId = " + subId);
+        }
         return null;
     }
 

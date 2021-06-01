@@ -16,9 +16,6 @@
 
 package com.android.imsserviceentitlement.ts43;
 
-import androidx.annotation.VisibleForTesting;
-
-import com.android.imsserviceentitlement.entitlement.VowifiStatus;
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlAttributes;
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlNode;
 import com.android.imsserviceentitlement.utils.XmlDoc;
@@ -27,14 +24,12 @@ import com.android.libraries.entitlement.ServiceEntitlement;
 import com.google.auto.value.AutoValue;
 
 /**
- * Implementation of WFC entitlement status and server data availability for TS.43 entitlement
- * solution.
+ * Implementation of Vowifi entitlement status and server data availability for TS.43 entitlement
+ * solution. This class is only used to report the entitlement status of Vowifi.
  */
 @AutoValue
-@VisibleForTesting
-public abstract class Ts43VowifiStatus implements VowifiStatus {
-    /** The entitlement status of vowifi service. */
-    @VisibleForTesting
+public abstract class Ts43VowifiStatus {
+    /** The entitlement status of Vowifi service. */
     public static class EntitlementStatus {
         public EntitlementStatus() {}
 
@@ -45,7 +40,6 @@ public abstract class Ts43VowifiStatus implements VowifiStatus {
     }
 
     /** The emergency address status of vowifi service. */
-    @VisibleForTesting
     public static class AddrStatus {
         public AddrStatus() {}
 
@@ -56,7 +50,6 @@ public abstract class Ts43VowifiStatus implements VowifiStatus {
     }
 
     /** The terms and condition status of vowifi service. */
-    @VisibleForTesting
     public static class TcStatus {
         public TcStatus() {}
 
@@ -67,7 +60,6 @@ public abstract class Ts43VowifiStatus implements VowifiStatus {
     }
 
     /** The provision status of vowifi service. */
-    @VisibleForTesting
     public static class ProvStatus {
         public ProvStatus() {}
 
@@ -136,7 +128,6 @@ public abstract class Ts43VowifiStatus implements VowifiStatus {
         public abstract Builder setProvStatus(int provStatus);
     }
 
-    @Override
     public boolean vowifiEntitled() {
         return entitlementStatus() == EntitlementStatus.ENABLED
                 && (provStatus() == ProvStatus.PROVISIONED
@@ -146,14 +137,12 @@ public abstract class Ts43VowifiStatus implements VowifiStatus {
                 || addrStatus() == AddrStatus.NOT_REQUIRED);
     }
 
-    @Override
     public boolean serverDataMissing() {
         return entitlementStatus() == EntitlementStatus.DISABLED
                 && (tcStatus() == TcStatus.NOT_AVAILABLE
                 || addrStatus() == AddrStatus.NOT_AVAILABLE);
     }
 
-    @Override
     public boolean inProgress() {
         return entitlementStatus() == EntitlementStatus.PROVISIONING
                 || (entitlementStatus() == EntitlementStatus.DISABLED
@@ -166,7 +155,6 @@ public abstract class Ts43VowifiStatus implements VowifiStatus {
                 || addrStatus() == AddrStatus.NOT_REQUIRED));
     }
 
-    @Override
     public boolean incompatible() {
         return entitlementStatus() == EntitlementStatus.INCOMPATIBLE;
     }
