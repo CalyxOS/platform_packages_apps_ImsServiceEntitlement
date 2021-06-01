@@ -20,6 +20,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.util.Log;
 
+import com.android.imsserviceentitlement.ImsEntitlementPollingService;
 import com.android.imsserviceentitlement.job.JobManager;
 import com.android.imsserviceentitlement.utils.TelephonyUtils;
 import com.android.libraries.entitlement.ServiceEntitlement;
@@ -34,8 +35,6 @@ import java.util.Map;
 public class FcmService extends FirebaseMessagingService {
     private static final String TAG = "IMSSE-FcmService";
 
-    private static final String POLLING_SERVICE_COMPONENT_NAME =
-            "com.android.imsserviceentitlement/.ImsEntitlementPollingService";
     private static final String DATA_APP_KEY = "app";
     private static final String DATA_TIMESTAMP_KEY = "timestamp";
 
@@ -120,7 +119,8 @@ public class FcmService extends FirebaseMessagingService {
                 ? mJobManager
                 : JobManager.getInstance(
                         this,
-                        ComponentName.unflattenFromString(POLLING_SERVICE_COMPONENT_NAME), subId);
+                        ImsEntitlementPollingService.COMPONENT_NAME,
+                        subId);
     }
 
     private void scheduleEntitlementStatusCheckForSubIdAssociatedWithSenderId(String msgSenderId) {

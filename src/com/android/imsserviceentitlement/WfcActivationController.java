@@ -42,7 +42,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
-import com.android.imsserviceentitlement.entitlement.VowifiStatus;
+import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus;
 import com.android.imsserviceentitlement.utils.ImsUtils;
 import com.android.imsserviceentitlement.utils.TelephonyUtils;
 
@@ -230,7 +230,7 @@ public class WfcActivationController {
 
     @MainThread
     private void handleEntitlementStatusForActivation(EntitlementResult result) {
-        VowifiStatus vowifiStatus = result.getVowifiStatus();
+        Ts43VowifiStatus vowifiStatus = result.getVowifiStatus();
         if (vowifiStatus.vowifiEntitled()) {
             finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__SUCCESSFUL);
             mActivationUi.setResultAndFinish(Activity.RESULT_OK);
@@ -257,7 +257,7 @@ public class WfcActivationController {
 
     @MainThread
     private void handleEntitlementStatusForUpdating(EntitlementResult result) {
-        VowifiStatus vowifiStatus = result.getVowifiStatus();
+        Ts43VowifiStatus vowifiStatus = result.getVowifiStatus();
         if (vowifiStatus.vowifiEntitled()) {
             int launchIntention = ActivityConstants.getLaunchIntention(mStartIntent);
             if (launchIntention == ActivityConstants.LAUNCH_APP_SHOW_TC) {
@@ -298,7 +298,7 @@ public class WfcActivationController {
 
     @MainThread
     private void handleEntitlementStatusAfterActivation(EntitlementResult result) {
-        VowifiStatus vowifiStatus = result.getVowifiStatus();
+        Ts43VowifiStatus vowifiStatus = result.getVowifiStatus();
         if (vowifiStatus.vowifiEntitled()) {
             mActivationUi.setResultAndFinish(Activity.RESULT_OK);
             finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__SUCCESSFUL);
@@ -330,7 +330,7 @@ public class WfcActivationController {
 
     @MainThread
     private void handleEntitlementStatusAfterUpdating(EntitlementResult result) {
-        VowifiStatus vowifiStatus = result.getVowifiStatus();
+        Ts43VowifiStatus vowifiStatus = result.getVowifiStatus();
         if (vowifiStatus.vowifiEntitled()) {
             mActivationUi.setResultAndFinish(Activity.RESULT_OK);
             finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__SUCCESSFUL);
