@@ -16,51 +16,50 @@
 
 package com.android.imsserviceentitlement.entitlement;
 
+import com.android.imsserviceentitlement.ts43.Ts43SmsOverIpStatus;
+import com.android.imsserviceentitlement.ts43.Ts43VolteStatus;
+import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus;
+
 import com.google.auto.value.AutoValue;
 
 /** The result of the entitlement status check. */
 @AutoValue
 public abstract class EntitlementResult {
-    private static final VowifiStatus INACTIVE_VOWIFI_STATUS =
-            new VowifiStatus() {
-                @Override
-                public boolean vowifiEntitled() {
-                    return false;
-                }
+    private static final Ts43VowifiStatus INACTIVE_VOWIFI_STATUS =
+            Ts43VowifiStatus.builder()
+                    .setEntitlementStatus(Ts43VowifiStatus.EntitlementStatus.INCOMPATIBLE)
+                    .setTcStatus(Ts43VowifiStatus.TcStatus.NOT_AVAILABLE)
+                    .setAddrStatus(Ts43VowifiStatus.AddrStatus.NOT_AVAILABLE)
+                    .setProvStatus(Ts43VowifiStatus.ProvStatus.NOT_PROVISIONED)
+                    .build();
 
-                @Override
-                public boolean serverDataMissing() {
-                    return false;
-                }
+    private static final Ts43VolteStatus INACTIVE_VOLTE_STATUS =
+            Ts43VolteStatus.builder()
+                    .setEntitlementStatus(Ts43VolteStatus.EntitlementStatus.INCOMPATIBLE)
+                    .build();
 
-                @Override
-                public boolean inProgress() {
-                    return true;
-                }
-
-                @Override
-                public boolean incompatible() {
-                    return false;
-                }
-            };
+    private static final Ts43SmsOverIpStatus INACTIVE_SMSOVERIP_STATUS =
+            Ts43SmsOverIpStatus.builder()
+                    .setEntitlementStatus(Ts43SmsOverIpStatus.EntitlementStatus.INCOMPATIBLE)
+                    .build();
 
     /** Returns a new {@link Builder} object. */
     public static Builder builder() {
         return new AutoValue_EntitlementResult.Builder()
-                .setSuccess(false)
                 .setVowifiStatus(INACTIVE_VOWIFI_STATUS)
-                .setPollInterval(0)
+                .setVolteStatus(INACTIVE_VOLTE_STATUS)
+                .setSmsoveripStatus(INACTIVE_SMSOVERIP_STATUS)
                 .setEmergencyAddressWebUrl("")
                 .setEmergencyAddressWebData("")
                 .setTermsAndConditionsWebUrl("");
     }
 
-    /** Indicates this entitlement query succeeded or failed. */
-    public abstract boolean isSuccess();
-    /** The entitlement and service status of Vowifi. */
-    public abstract VowifiStatus getVowifiStatus();
-    /** The interval for scheduling polling job. */
-    public abstract int getPollInterval();
+    /** The entitlement and service status of VoWiFi. */
+    public abstract Ts43VowifiStatus getVowifiStatus();
+    /** The entitlement and service status of VoLTE. */
+    public abstract Ts43VolteStatus getVolteStatus();
+    /** The entitlement and service status of SMSoIP. */
+    public abstract Ts43SmsOverIpStatus getSmsoveripStatus();
     /** The URL to the WFC emergency address web form. */
     public abstract String getEmergencyAddressWebUrl();
     /** The data associated with the POST request to the WFC emergency address web form. */
@@ -72,9 +71,9 @@ public abstract class EntitlementResult {
     @AutoValue.Builder
     public abstract static class Builder {
         public abstract EntitlementResult build();
-        public abstract Builder setSuccess(boolean success);
-        public abstract Builder setVowifiStatus(VowifiStatus vowifiStatus);
-        public abstract Builder setPollInterval(int pollInterval);
+        public abstract Builder setVowifiStatus(Ts43VowifiStatus vowifiStatus);
+        public abstract Builder setVolteStatus(Ts43VolteStatus volteStatus);
+        public abstract Builder setSmsoveripStatus(Ts43SmsOverIpStatus smsoveripStatus);
         public abstract Builder setEmergencyAddressWebUrl(String emergencyAddressWebUrl);
         public abstract Builder setEmergencyAddressWebData(String emergencyAddressWebData);
         public abstract Builder setTermsAndConditionsWebUrl(String termsAndConditionsWebUrl);
@@ -83,11 +82,11 @@ public abstract class EntitlementResult {
     @Override
     public final String toString() {
         StringBuilder builder = new StringBuilder("EntitlementResult{");
-        builder.append("isSuccess=").append(isSuccess());
         builder.append(",getVowifiStatus=").append(getVowifiStatus());
+        builder.append(",getVolteStatus=").append(getVolteStatus());
+        builder.append(",getSmsoveripStatus=").append(getSmsoveripStatus());
         builder.append(",getEmergencyAddressWebUrl=").append(opaque(getEmergencyAddressWebUrl()));
         builder.append(",getEmergencyAddressWebData=").append(opaque(getEmergencyAddressWebData()));
-        builder.append(",getPollInterval=").append(getPollInterval());
         builder.append(",getTermsAndConditionsWebUrl=").append(getTermsAndConditionsWebUrl());
         builder.append("}");
         return builder.toString();
