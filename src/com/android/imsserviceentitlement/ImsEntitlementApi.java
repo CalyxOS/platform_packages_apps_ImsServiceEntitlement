@@ -28,6 +28,8 @@ import com.android.imsserviceentitlement.fcm.FcmTokenStore;
 import com.android.imsserviceentitlement.fcm.FcmUtils;
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlAttributes;
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlNode;
+import com.android.imsserviceentitlement.ts43.Ts43SmsOverIpStatus;
+import com.android.imsserviceentitlement.ts43.Ts43VolteStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus;
 import com.android.imsserviceentitlement.utils.TelephonyUtils;
 import com.android.imsserviceentitlement.utils.XmlDoc;
@@ -51,11 +53,13 @@ public class ImsEntitlementApi {
     private final EntitlementConfiguration mLastEntitlementConfiguration;
 
     private int mRetryFullAuthenticationCount = AUTHENTICATION_RETRIES;
+    private boolean mNeedsImsProvisioning;
 
     public ImsEntitlementApi(Context context, int subId) {
         this.mContext = context;
         this.mSubId = subId;
         CarrierConfig carrierConfig = getCarrierConfig(context);
+        this.mNeedsImsProvisioning = TelephonyUtils.isImsProvisioningRequired(context, subId);
         this.mServiceEntitlement = new ServiceEntitlement(context, carrierConfig, subId);
         this.mLastEntitlementConfiguration = new EntitlementConfiguration(context, subId);
     }
@@ -64,10 +68,12 @@ public class ImsEntitlementApi {
     ImsEntitlementApi(
             Context context,
             int subId,
+            boolean needsImsProvisioning,
             ServiceEntitlement serviceEntitlement,
             EntitlementConfiguration lastEntitlementConfiguration) {
         this.mContext = context;
         this.mSubId = subId;
+        this.mNeedsImsProvisioning = needsImsProvisioning;
         this.mServiceEntitlement = serviceEntitlement;
         this.mLastEntitlementConfiguration = lastEntitlementConfiguration;
     }
@@ -95,7 +101,13 @@ public class ImsEntitlementApi {
 
         try {
             String rawXml = mServiceEntitlement.queryEntitlementStatus(
-                    ImmutableList.of(ServiceEntitlement.APP_VOWIFI), request);
+                    mNeedsImsProvisioning
+                            ? ImmutableList.of(
+                            ServiceEntitlement.APP_VOWIFI,
+                            ServiceEntitlement.APP_VOLTE,
+                            ServiceEntitlement.APP_SMSOIP)
+                            : ImmutableList.of(ServiceEntitlement.APP_VOWIFI),
+                    request);
             entitlementXmlDoc = new XmlDoc(rawXml);
             mLastEntitlementConfiguration.update(rawXml);
             // Reset the retry count if no exception from queryEntitlementStatus()
@@ -122,8 +134,9 @@ public class ImsEntitlementApi {
     private static EntitlementResult toEntitlementResult(XmlDoc doc) {
         EntitlementResult.Builder builder =
                 EntitlementResult.builder()
-                        .setSuccess(true)
-                        .setVowifiStatus(Ts43VowifiStatus.builder(doc).build());
+                        .setVowifiStatus(Ts43VowifiStatus.builder(doc).build())
+                        .setVolteStatus(Ts43VolteStatus.builder(doc).build())
+                        .setSmsoveripStatus(Ts43SmsOverIpStatus.builder(doc).build());
         doc.get(
                 ResponseXmlNode.APPLICATION,
                 ResponseXmlAttributes.SERVER_FLOW_URL,

@@ -37,7 +37,7 @@ public class JobManager {
     private static final int JOB_ID_BASE_INDEX = 1000;
 
     // Query entitlement status
-    public static final int QUERY_ENTITLEMEN_STATUS_JOB_ID = 1;
+    public static final int QUERY_ENTITLEMENT_STATUS_JOB_ID = 1;
     // Register FCM to listen push notification, this job not associated with subscription id.
     public static final int REGISTER_FCM_JOB_ID = 2;
 
@@ -120,11 +120,11 @@ public class JobManager {
     public void queryEntitlementStatusOnceNetworkReady(int retryCount) {
         Log.d(
                 TAG,
-                "schedule QUERY_ENTITLEMEN_STATUS_JOB_ID once has network connection, "
+                "schedule QUERY_ENTITLEMENT_STATUS_JOB_ID once has network connection, "
                         + "retryCount="
                         + retryCount);
         JobInfo job =
-                newJobInfoBuilder(QUERY_ENTITLEMEN_STATUS_JOB_ID, retryCount)
+                newJobInfoBuilder(QUERY_ENTITLEMENT_STATUS_JOB_ID, retryCount)
                         .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                         .build();
         mJobScheduler.schedule(job);
