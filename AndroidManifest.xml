@@ -26,10 +26,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="com.google.android.setupwizard.SETUP_COMPAT_SERVICE"/>
 
-    <application
-        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
-        tools:replace="android:appComponentFactory">
-
+    <application>
         <activity
             android:name=".WfcActivationActivity"
             android:exported="true"
@@ -68,4 +65,5 @@
         </service>
         <!-- END: FCM related components -->
     </application>
+
 </manifest>
