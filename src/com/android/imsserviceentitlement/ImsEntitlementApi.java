@@ -95,6 +95,7 @@ public class ImsEntitlementApi {
         requestBuilder.setTerminalVendor("vendorX");
         requestBuilder.setTerminalModel("modelY");
         requestBuilder.setTerminalSoftwareVersion("versionZ");
+        requestBuilder.setAcceptContentType(ServiceEntitlementRequest.ACCEPT_CONTENT_TYPE_XML);
         ServiceEntitlementRequest request = requestBuilder.build();
 
         XmlDoc entitlementXmlDoc = null;
