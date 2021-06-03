@@ -32,6 +32,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
+import java.util.concurrent.Executor;
 
 /** A fragment of WebView to render WFC T&C and emergency address web portal */
 public class WfcWebPortalFragment extends Fragment {
@@ -137,9 +138,11 @@ public class WfcWebPortalFragment extends Fragment {
     /** Emergency address websheet javascript callback. */
     private class JsInterface {
         private final WfcActivationUi mUi;
+        private final Executor mMainExecutor;
 
         JsInterface(Activity activity) {
             mUi = (WfcActivationUi) activity;
+            mMainExecutor = activity.getMainExecutor();
         }
 
         /**
@@ -150,7 +153,7 @@ public class WfcWebPortalFragment extends Fragment {
         public void entitlementChanged() {
             Log.d(TAG, "#entitlementChanged");
             mFinishFlow = true;
-            mUi.getController().finishFlow();
+            mMainExecutor.execute(() -> mUi.getController().finishFlow());
         }
 
         /**

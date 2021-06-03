@@ -24,6 +24,8 @@ import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IM
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT;
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__PURPOSE__POLLING;
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__PURPOSE__UNKNOWN_PURPOSE;
+import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__SERVICE_TYPE__SMSOIP;
+import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__SERVICE_TYPE__VOLTE;
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__SERVICE_TYPE__VOWIFI;
 
 import android.app.job.JobParameters;
@@ -55,7 +57,7 @@ public class ImsEntitlementPollingService extends JobService {
 
     public static final ComponentName COMPONENT_NAME =
             ComponentName.unflattenFromString(
-                    "com.android.imsserviceentitlement/ImsEntitlementPollingService");
+                    "com.android.imsserviceentitlement/.ImsEntitlementPollingService");
 
     private ImsEntitlementApi mImsEntitlementApi;
 
@@ -76,6 +78,15 @@ public class ImsEntitlementPollingService extends JobService {
     @VisibleForTesting
     void injectImsEntitlementApi(ImsEntitlementApi imsEntitlementApi) {
         this.mImsEntitlementApi = imsEntitlementApi;
+    }
+
+    /** Enqueues a job to query entitlement status. */
+    public static void enqueueJob(Context context, int subId, int retryCount) {
+        JobManager.getInstance(
+                context,
+                COMPONENT_NAME,
+                subId)
+                .queryEntitlementStatusOnceNetworkReady(retryCount);
     }
 
     @Override
@@ -122,17 +133,24 @@ public class ImsEntitlementPollingService extends JobService {
         private final ImsEntitlementApi mImsEntitlementApi;
         private final ImsUtils mImsUtils;
         private final TelephonyUtils mTelephonyUtils;
+        private final int mSubid;
+        private final boolean mNeedsImsProvisioning;
 
         // States for metrics
         private long mStartTime;
         private long mDurationMillis;
         private int mPurpose = IMS_SERVICE_ENTITLEMENT_UPDATED__PURPOSE__UNKNOWN_PURPOSE;
-        private int mAppResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT;
+        private int mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT;
+        private int mVolteResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT;
+        private int mSmsoipResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT;
 
         EntitlementPollingTask(final JobParameters params, int subId) {
             this.mParams = params;
             this.mImsUtils = ImsUtils.getInstance(ImsEntitlementPollingService.this, subId);
             this.mTelephonyUtils = new TelephonyUtils(ImsEntitlementPollingService.this, subId);
+            this.mSubid = subId;
+            this.mNeedsImsProvisioning = TelephonyUtils.isImsProvisioningRequired(
+                    ImsEntitlementPollingService.this, mSubid);
             this.mImsEntitlementApi = ImsEntitlementPollingService.this.mImsEntitlementApi != null
                     ? ImsEntitlementPollingService.this.mImsEntitlementApi
                     : new ImsEntitlementApi(ImsEntitlementPollingService.this, subId);
@@ -143,9 +161,9 @@ public class ImsEntitlementPollingService extends JobService {
             mStartTime = mTelephonyUtils.getUptimeMillis();
             int jobId = JobManager.getPureJobId(mParams.getJobId());
             switch (jobId) {
-                case JobManager.QUERY_ENTITLEMEN_STATUS_JOB_ID:
+                case JobManager.QUERY_ENTITLEMENT_STATUS_JOB_ID:
                     mPurpose = IMS_SERVICE_ENTITLEMENT_UPDATED__PURPOSE__POLLING;
-                    doWfcEntitlementCheck();
+                    doEntitlementCheck();
                     break;
                 default:
                     break;
@@ -165,6 +183,51 @@ public class ImsEntitlementPollingService extends JobService {
             sendStatsLogToMetrics();
         }
 
+        private void doEntitlementCheck() {
+            if (mNeedsImsProvisioning) {
+                doImsEntitlementCheck();
+            } else {
+                doWfcEntitlementCheck();
+            }
+        }
+
+        @WorkerThread
+        private void doImsEntitlementCheck() {
+            try {
+                EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
+                Log.d(TAG, "Entitlement result: " + result);
+
+                if (shouldTurnOffWfc(result)) {
+                    mImsUtils.setVowifiProvisioned(false);
+                    mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED;
+                } else {
+                    mImsUtils.setVowifiProvisioned(true);
+                    mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__ENABLED;
+                }
+
+                if (shouldTurnOffVolte(result)) {
+                    mImsUtils.setVolteProvisioned(false);
+                    mVolteResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED;
+                } else {
+                    mImsUtils.setVolteProvisioned(true);
+                    mVolteResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__ENABLED;
+                }
+
+                if (shouldTurnOffSMSoIP(result)) {
+                    mImsUtils.setSmsoipProvisioned(false);
+                    mSmsoipResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED;
+                } else {
+                    mImsUtils.setSmsoipProvisioned(true);
+                    mSmsoipResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__ENABLED;
+                }
+            } catch (RuntimeException e) {
+                mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
+                mVolteResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
+                mSmsoipResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
+                Log.d(TAG, "checkEntitlementStatus failed.", e);
+            }
+        }
+
         @WorkerThread
         private void doWfcEntitlementCheck() {
             if (!mImsUtils.isWfcEnabledByUser()) {
@@ -175,13 +238,13 @@ public class ImsEntitlementPollingService extends JobService {
                 EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
                 Log.d(TAG, "Entitlement result: " + result);
                 if (shouldTurnOffWfc(result)) {
-                    mAppResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED;
+                    mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED;
                     mImsUtils.disableWfc();
                 } else {
-                    mAppResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__ENABLED;
+                    mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__ENABLED;
                 }
             } catch (RuntimeException e) {
-                mAppResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
+                mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
                 Log.d(TAG, "checkEntitlementStatus failed.", e);
             }
         }
@@ -202,20 +265,58 @@ public class ImsEntitlementPollingService extends JobService {
                     || result.getVowifiStatus().incompatible();
         }
 
+        private boolean shouldTurnOffVolte(@Nullable EntitlementResult result) {
+            if (result == null) {
+                Log.d(TAG, "Entitlement API failed to return a result; don't turn off VoLTE.");
+                return false;
+            }
+
+            // Only turn off VoLTE for known patterns indicating VoLTE not activated.
+            return !result.getVolteStatus().isActive();
+        }
+
+        private boolean shouldTurnOffSMSoIP(@Nullable EntitlementResult result) {
+            if (result == null) {
+                Log.d(TAG, "Entitlement API failed to return a result; don't turn off SMSoIP.");
+                return false;
+            }
+
+            // Only turn off SMSoIP for known patterns indicating SMSoIP not activated.
+            return !result.getSmsoveripStatus().isActive();
+        }
+
         private void sendStatsLogToMetrics() {
             mDurationMillis = mTelephonyUtils.getUptimeMillis() - mStartTime;
 
             // If no result set, it was cancelled for reasons.
-            if (mAppResult == IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT) {
-                mAppResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__CANCELED;
+            if (mVowifiResult == IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT) {
+                mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__CANCELED;
             }
+            writeStateLogByApps(
+                    IMS_SERVICE_ENTITLEMENT_UPDATED__SERVICE_TYPE__VOWIFI, mVowifiResult);
+
+            if (mNeedsImsProvisioning) {
+                if (mVolteResult == IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT) {
+                    mVolteResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__CANCELED;
+                }
+                if (mSmsoipResult == IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT) {
+                    mSmsoipResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__CANCELED;
+                }
+                writeStateLogByApps(
+                        IMS_SERVICE_ENTITLEMENT_UPDATED__SERVICE_TYPE__VOLTE, mVolteResult);
+                writeStateLogByApps(
+                        IMS_SERVICE_ENTITLEMENT_UPDATED__SERVICE_TYPE__SMSOIP, mSmsoipResult);
+            }
+        }
+
+        private void writeStateLogByApps(int appId, int appResult) {
             ImsServiceEntitlementStatsLog.write(
                     IMS_SERVICE_ENTITLEMENT_UPDATED,
                     mTelephonyUtils.getCarrierId(),
                     mTelephonyUtils.getSpecificCarrierId(),
                     mPurpose,
-                    IMS_SERVICE_ENTITLEMENT_UPDATED__SERVICE_TYPE__VOWIFI,
-                    mAppResult,
+                    appId,
+                    appResult,
                     mDurationMillis);
         }
     }
