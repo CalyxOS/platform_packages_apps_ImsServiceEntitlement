@@ -19,12 +19,12 @@ package com.android.imsserviceentitlement;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.SystemProperties;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.view.KeyEvent;
 
 import androidx.annotation.StringRes;
+import androidx.fragment.app.FragmentActivity;
+import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.setupdesign.util.ThemeResolver;
 

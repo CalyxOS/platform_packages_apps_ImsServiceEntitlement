@@ -28,8 +28,7 @@ android_library {
     name: "ImsServiceEntitlementLib",
     static_libs: [
         "androidx.annotation_annotation",
-        "android-support-v4",
-        "androidx.legacy_legacy-support-v4",
+        "androidx.fragment_fragment",
         "service-entitlement",
         "setupdesign",
         "guava",
