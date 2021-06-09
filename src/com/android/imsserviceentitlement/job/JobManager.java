@@ -30,6 +30,8 @@ import androidx.annotation.GuardedBy;
 
 import com.android.imsserviceentitlement.utils.TelephonyUtils;
 
+import java.time.Duration;
+
 /** Manages all scheduled jobs and provides common job scheduler. */
 public class JobManager {
     private static final String TAG = "IMSSE-JobManager";
@@ -111,21 +113,29 @@ public class JobManager {
         builder.setExtras(bundle);
     }
 
-    /** Checks Entitlement Status once has network connection. */
+    /** Checks Entitlement Status once has network connection without retry and delay. */
     public void queryEntitlementStatusOnceNetworkReady() {
-        queryEntitlementStatusOnceNetworkReady(0 /* retryCount */);
+        queryEntitlementStatusOnceNetworkReady(/* retryCount= */ 0, Duration.ofSeconds(0));
     }
 
     /** Checks Entitlement Status once has network connection with retry count. */
     public void queryEntitlementStatusOnceNetworkReady(int retryCount) {
+        queryEntitlementStatusOnceNetworkReady(retryCount, Duration.ofSeconds(0));
+    }
+
+    /** Checks Entitlement Status once has network connection with retry count and delay. */
+    public void queryEntitlementStatusOnceNetworkReady(int retryCount, Duration delay) {
         Log.d(
                 TAG,
                 "schedule QUERY_ENTITLEMENT_STATUS_JOB_ID once has network connection, "
                         + "retryCount="
-                        + retryCount);
+                        + retryCount
+                        + ", delay="
+                        + delay);
         JobInfo job =
                 newJobInfoBuilder(QUERY_ENTITLEMENT_STATUS_JOB_ID, retryCount)
                         .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                        .setMinimumLatency(delay.toMillis())
                         .build();
         mJobScheduler.schedule(job);
     }
