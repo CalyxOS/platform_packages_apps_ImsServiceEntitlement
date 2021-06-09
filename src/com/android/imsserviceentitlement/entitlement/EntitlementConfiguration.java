@@ -35,23 +35,23 @@ public class EntitlementConfiguration {
     /** Default value of VoLTE/VoWifi/SMSoverIP entitlemenet status. */
     private static final int INCOMPATIBLE_STATE = 2;
 
-    private final EntitlementConfigurationsDataStore mConfigutationsDataStore;
+    private final EntitlementConfigurationsDataStore mConfigurationsDataStore;
 
     private XmlDoc mXmlDoc = new XmlDoc(null);
 
     public EntitlementConfiguration(Context context, int subId) {
-        mConfigutationsDataStore = new EntitlementConfigurationsDataStore(context, subId);
-        mConfigutationsDataStore.get().ifPresent(rawXml -> mXmlDoc = new XmlDoc(rawXml));
+        mConfigurationsDataStore = EntitlementConfigurationsDataStore.getInstance(context, subId);
+        mConfigurationsDataStore.get().ifPresent(rawXml -> mXmlDoc = new XmlDoc(rawXml));
     }
 
     /** Update VERS characteristics with given version and validity. */
     public void update(String rawXml) {
-        mConfigutationsDataStore.set(rawXml);
+        mConfigurationsDataStore.set(rawXml);
         mXmlDoc = new XmlDoc(rawXml);
     }
 
     /**
-     * Returns VoLTE entitlement status from the {@link EntitlementCharacteristicDataStore}. If no
+     * Returns VoLTE entitlement status from the {@link EntitlementConfigurationsDataStore}. If no
      * data exist then return the default value {@link #INCOMPATIBLE_STATE}.
      */
     public int getVolteStatus() {
@@ -64,7 +64,7 @@ public class EntitlementConfiguration {
     }
 
     /**
-     * Returns VoWiFi entitlement status from the {@link EntitlementCharacteristicDataStore}. If no
+     * Returns VoWiFi entitlement status from the {@link EntitlementConfigurationsDataStore}. If no
      * data exist then return the default value {@link #INCOMPATIBLE_STATE}.
      */
     public int getVoWifiStatus() {
@@ -77,7 +77,7 @@ public class EntitlementConfiguration {
     }
 
     /**
-     * Returns SMSoIP entitlement status from the {@link EntitlementCharacteristicDataStore}. If no
+     * Returns SMSoIP entitlement status from the {@link EntitlementConfigurationsDataStore}. If no
      * data exist then return the default value {@link #INCOMPATIBLE_STATE}.
      */
     public int getSmsOverIpStatus() {
@@ -90,7 +90,7 @@ public class EntitlementConfiguration {
     }
 
     /**
-     * Returns token stored in the {@link EntitlementCharacteristicDataStore} if it is in validity
+     * Returns token stored in the {@link EntitlementConfigurationsDataStore} if it is in validity
      * period. Returns {@link Optional#empty()} if the token was expired or the value of token
      * validity not positive.
      */
@@ -101,7 +101,7 @@ public class EntitlementConfiguration {
     }
 
     private boolean isTokenInValidityPeriod() {
-        long queryTimeMillis = mConfigutationsDataStore.getQueryTimeMillis();
+        long queryTimeMillis = mConfigurationsDataStore.getQueryTimeMillis();
         long tokenValidityMillis = TimeUnit.SECONDS.toMillis(getTokenValidity());
 
         if (queryTimeMillis <= 0) {
@@ -115,7 +115,7 @@ public class EntitlementConfiguration {
             return true;
         }
 
-        return System.currentTimeMillis() - queryTimeMillis < tokenValidityMillis;
+        return (System.currentTimeMillis() - queryTimeMillis) < tokenValidityMillis;
     }
 
     /**

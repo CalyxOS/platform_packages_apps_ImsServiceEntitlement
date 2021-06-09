@@ -48,9 +48,9 @@ import com.android.imsserviceentitlement.utils.ImsUtils;
 import com.android.imsserviceentitlement.utils.TelephonyUtils;
 
 /**
- * The {@link JobService} for querying entitlement status in the background.
- * The jobId is unique for different subId + job combination, so can run the same job for different
- * subIds w/o cancelling each others. See {@link JobManager}.
+ * The {@link JobService} for querying entitlement status in the background. The jobId is unique for
+ * different subId + job combination, so can run the same job for different subIds w/o cancelling
+ * each others. See {@link JobManager}.
  */
 public class ImsEntitlementPollingService extends JobService {
     private static final String TAG = "IMSSE-ImsEntitlementPollingService";
@@ -250,8 +250,8 @@ public class ImsEntitlementPollingService extends JobService {
         }
 
         /**
-         * Returns {@code true} when {@code EntitlementResult} says WFC is not activated;
-         * Otherwise {@code false} if {@code EntitlementResult} is not of any known pattern.
+         * Returns {@code true} when {@code EntitlementResult} says WFC is not activated; Otherwise
+         * {@code false} if {@code EntitlementResult} is not of any known pattern.
          */
         private boolean shouldTurnOffWfc(@Nullable EntitlementResult result) {
             if (result == null) {

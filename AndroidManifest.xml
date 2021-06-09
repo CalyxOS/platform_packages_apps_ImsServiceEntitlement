@@ -64,6 +64,14 @@
             android:permission="android.permission.BIND_JOB_SERVICE">
         </service>
         <!-- END: FCM related components -->
+
+        <receiver
+            android:name=".ImsEntitlementReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.telephony.action.CARRIER_CONFIG_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
