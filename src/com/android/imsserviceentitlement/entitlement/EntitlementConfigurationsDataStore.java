@@ -18,6 +18,7 @@ package com.android.imsserviceentitlement.entitlement;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.SparseArray;
 
 import java.util.Optional;
 
@@ -29,7 +30,17 @@ class EntitlementConfigurationsDataStore {
 
     private final SharedPreferences mPreferences;
 
-    EntitlementConfigurationsDataStore(Context context, int subId) {
+    private static final SparseArray<EntitlementConfigurationsDataStore> sInstances =
+            new SparseArray<>();
+
+    public static EntitlementConfigurationsDataStore getInstance(Context context, int subId) {
+        if (sInstances.get(subId) == null) {
+            sInstances.put(subId, new EntitlementConfigurationsDataStore(context, subId));
+        }
+        return sInstances.get(subId);
+    }
+
+    private EntitlementConfigurationsDataStore(Context context, int subId) {
         this.mPreferences = context.getSharedPreferences(
                 PREFERENCE_ENTITLEMENT_CHARACTERISTICS + "_" + subId,
                 Context.MODE_PRIVATE);

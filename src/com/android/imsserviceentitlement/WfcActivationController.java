@@ -60,8 +60,6 @@ public class WfcActivationController {
     private static final int ENTITLEMENT_STATUS_UPDATE_RETRY_MAX = 6;
     private static final long ENTITLEMENT_STATUS_UPDATE_RETRY_INTERVAL_MS =
             Duration.ofSeconds(5).toMillis();
-    private static final long ENTITLEMENT_STATUS_UPDATE_RETRY_INTERVAL_MS_ATT =
-            Duration.ofMinutes(30).toMillis();
 
     // Dependencies
     private final WfcActivationUi mActivationUi;
