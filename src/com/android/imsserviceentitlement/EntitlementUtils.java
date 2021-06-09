@@ -16,8 +16,12 @@
 
 package com.android.imsserviceentitlement;
 
+import static com.android.imsserviceentitlement.utils.Executors.getAsyncExecutor;
+import static com.android.imsserviceentitlement.utils.Executors.getDirectExecutor;
+
 import android.util.Log;
 
+import androidx.annotation.MainThread;
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
 
@@ -27,26 +31,13 @@ import com.android.imsserviceentitlement.entitlement.EntitlementResult;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-/** Handle entitlement check */
-public class EntitlementUtils {
+/** Handles entitlement check from main thread. */
+public final class EntitlementUtils {
 
     public static final String LOG_TAG = "IMSSE-EntitlementUtils";
 
-    private static final ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
-    private static final ExecutorService DIRECT_EXECUTOR_SERVICE =
-            MoreExecutors.newDirectExecutorService();
     private static ListenableFuture<EntitlementResult> sCheckEntitlementFuture;
-
-    /**
-     * Whether to execute entitlementCheck in caller's thread, set to true via reflection for test.
-     */
-    private static boolean sUseDirectExecutorForTest = false;
 
     private EntitlementUtils() {}
 
@@ -54,12 +45,11 @@ public class EntitlementUtils {
      * Performs the entitlement status check, and passes the result via {@link
      * EntitlementResultCallback}.
      */
+    @MainThread
     public static void entitlementCheck(
             ImsEntitlementApi activationApi, EntitlementResultCallback callback) {
-        ListeningExecutorService service =
-                MoreExecutors.listeningDecorator(
-                        sUseDirectExecutorForTest ? DIRECT_EXECUTOR_SERVICE : EXECUTOR_SERVICE);
-        sCheckEntitlementFuture = service.submit(() -> getEntitlementStatus(activationApi));
+        sCheckEntitlementFuture =
+                Futures.submit(() -> getEntitlementStatus(activationApi), getAsyncExecutor());
         Futures.addCallback(
                 sCheckEntitlementFuture,
                 new FutureCallback<EntitlementResult>() {
@@ -75,7 +65,7 @@ public class EntitlementUtils {
                         sCheckEntitlementFuture = null;
                     }
                 },
-                DIRECT_EXECUTOR_SERVICE);
+                getDirectExecutor());
     }
 
     /** Cancels the running task of entitlement status check if exist. */
