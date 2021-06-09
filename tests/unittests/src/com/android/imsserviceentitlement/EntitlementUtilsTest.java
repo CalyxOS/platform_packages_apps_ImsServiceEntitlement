@@ -24,6 +24,7 @@ import androidx.test.runner.AndroidJUnit4;
 
 import com.android.imsserviceentitlement.WfcActivationController.EntitlementResultCallback;
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
+import com.android.imsserviceentitlement.utils.Executors;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -44,7 +45,7 @@ public class EntitlementUtilsTest {
 
     @Before
     public void setup() throws Exception {
-        Field field = EntitlementUtils.class.getDeclaredField("sUseDirectExecutorForTest");
+        Field field = Executors.class.getDeclaredField("sUseDirectExecutorForTest");
         field.setAccessible(true);
         field.set(null, true);
     }

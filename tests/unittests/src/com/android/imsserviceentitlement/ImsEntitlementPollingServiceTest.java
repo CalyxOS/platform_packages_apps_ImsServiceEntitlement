@@ -16,11 +16,14 @@
 
 package com.android.imsserviceentitlement;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.job.JobParameters;
+import android.app.job.JobScheduler;
 import android.content.Context;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
@@ -67,17 +70,19 @@ public class ImsEntitlementPollingServiceTest {
     @Mock private CarrierConfigManager mCarrierConfigManager;
 
     private ImsEntitlementPollingService mService;
+    private JobScheduler mScheduler;
 
     private static final int SUB_ID = 1;
     private static final int SLOT_ID = 0;
 
     @Before
-    public void setup() throws Exception {
+    public void setUp() throws Exception {
         mService = new ImsEntitlementPollingService();
         mService.attachBaseContext(mContext);
         mService.onCreate();
         mService.onBind(null);
         mService.injectImsEntitlementApi(mImsEntitlementApi);
+        mScheduler = mContext.getSystemService(JobScheduler.class);
         setActivedSubscription();
         setupImsUtils();
         setJobParameters();
@@ -154,6 +159,16 @@ public class ImsEntitlementPollingServiceTest {
         verify(mImsUtils).setSmsoipProvisioned(true);
     }
 
+    @Test
+    public void enqueueJob_hasJob() {
+        ImsEntitlementPollingService.enqueueJob(mContext, SUB_ID, 0);
+
+        assertThat(
+                mScheduler.getPendingJob(
+                        jobIdWithSubId(JobManager.QUERY_ENTITLEMENT_STATUS_JOB_ID, SUB_ID)))
+                .isNotNull();
+    }
+
     private void setActivedSubscription() {
         when(mSubscriptionInfo.getSimSlotIndex()).thenReturn(SLOT_ID);
         when(mSubscriptionManager.getActiveSubscriptionInfo(SUB_ID)).thenReturn(mSubscriptionInfo);
@@ -207,6 +222,10 @@ public class ImsEntitlementPollingServiceTest {
                 .setVolteStatus(volteStatus)
                 .setSmsoveripStatus(smsOverIpStatus)
                 .build();
+    }
+
+    private int jobIdWithSubId(int jobId, int subId) {
+        return 1000 * subId + jobId;
     }
 
     private static final Ts43VowifiStatus sDisableVoWiFi =
