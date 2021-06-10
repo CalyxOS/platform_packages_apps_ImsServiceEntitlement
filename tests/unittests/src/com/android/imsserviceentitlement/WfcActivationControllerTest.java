@@ -39,6 +39,7 @@ import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.AddrStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.EntitlementStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.ProvStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.TcStatus;
+import com.android.imsserviceentitlement.utils.Executors;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -79,7 +80,7 @@ public class WfcActivationControllerTest {
         when(mTelephonyManager.createForSubscriptionId(SUB_ID)).thenReturn(mTelephonyManager);
         setNetworkConnected(true);
 
-        Field field = EntitlementUtils.class.getDeclaredField("sUseDirectExecutorForTest");
+        Field field = Executors.class.getDeclaredField("sUseDirectExecutorForTest");
         field.setAccessible(true);
         field.set(null, true);
     }
