@@ -42,10 +42,14 @@ import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 import androidx.annotation.WorkerThread;
 
+import com.android.imsserviceentitlement.entitlement.EntitlementConfiguration;
+import com.android.imsserviceentitlement.entitlement.EntitlementConfiguration.ClientBehavior;
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
 import com.android.imsserviceentitlement.job.JobManager;
 import com.android.imsserviceentitlement.utils.ImsUtils;
 import com.android.imsserviceentitlement.utils.TelephonyUtils;
+
+import java.time.Duration;
 
 /**
  * The {@link JobService} for querying entitlement status in the background. The jobId is unique for
@@ -87,6 +91,15 @@ public class ImsEntitlementPollingService extends JobService {
                 COMPONENT_NAME,
                 subId)
                 .queryEntitlementStatusOnceNetworkReady(retryCount);
+    }
+
+    /** Enqueues a job to query entitlement status with delay. */
+    private static void enqueueJobWithDelay(Context context, int subId, long delayInSeconds) {
+        JobManager.getInstance(
+                context,
+                COMPONENT_NAME,
+                subId)
+                .queryEntitlementStatusOnceNetworkReady(0, Duration.ofSeconds(delayInSeconds));
     }
 
     @Override
@@ -185,7 +198,9 @@ public class ImsEntitlementPollingService extends JobService {
 
         private void doEntitlementCheck() {
             if (mNeedsImsProvisioning) {
+                // TODO(b/190476343): Unify EntitlementResult and EntitlementConfiguration.
                 doImsEntitlementCheck();
+                checkVersValidity();
             } else {
                 doWfcEntitlementCheck();
             }
@@ -246,6 +261,22 @@ public class ImsEntitlementPollingService extends JobService {
             } catch (RuntimeException e) {
                 mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
                 Log.d(TAG, "checkEntitlementStatus failed.", e);
+            }
+        }
+
+        /**
+         * Schedules entitlement status check after a VERS.validity time, if the last valid is
+         * during validity.
+         */
+        private void checkVersValidity() {
+            EntitlementConfiguration lastEntitlementConfiguration =
+                    new EntitlementConfiguration(ImsEntitlementPollingService.this, mSubid);
+            if (lastEntitlementConfiguration.entitlementValidation()
+                    == ClientBehavior.VALID_DURING_VALIDITY) {
+                enqueueJobWithDelay(
+                        ImsEntitlementPollingService.this,
+                        mSubid,
+                        lastEntitlementConfiguration.getVersValidity());
             }
         }
 
