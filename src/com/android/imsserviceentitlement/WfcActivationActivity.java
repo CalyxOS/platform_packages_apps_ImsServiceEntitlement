@@ -26,6 +26,7 @@ import androidx.annotation.StringRes;
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentTransaction;
 
+import com.google.android.setupdesign.util.ThemeHelper;
 import com.google.android.setupdesign.util.ThemeResolver;
 
 /** The UI for WFC activation. */
@@ -122,11 +123,18 @@ public class WfcActivationActivity extends FragmentActivity implements WfcActiva
     }
 
     private void setSuwTheme() {
-        int theme =
-                ThemeResolver.getDefault().resolve(
-                        SystemProperties.get("setupwizard.theme"),
-                        false);
-        setTheme(theme != 0 ? theme : R.style.SudThemeGlif_Light);
+        int defaultTheme =
+                ThemeHelper.isSetupWizardDayNightEnabled(this)
+                        ? R.style.SudThemeGlifV3_DayNight
+                        : R.style.SudThemeGlifV3_Light;
+        ThemeResolver themeResolver =
+                new ThemeResolver.Builder(ThemeResolver.getDefault())
+                        .setDefaultTheme(defaultTheme)
+                        .setUseDayNight(true)
+                        .build();
+        setTheme(themeResolver.resolve(
+                SystemProperties.get("setupwizard.theme", "SudThemeGlifV3_DayNight"),
+                /* suppressDayNight= */ !ThemeHelper.isSetupWizardDayNightEnabled(this)));
     }
 
     private void createDependeny() {
