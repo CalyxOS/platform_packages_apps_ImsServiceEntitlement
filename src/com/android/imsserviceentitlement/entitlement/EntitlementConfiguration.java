@@ -131,6 +131,24 @@ public class EntitlementConfiguration {
                 .orElse(DEFAULT_VALIDITY);
     }
 
+    /** Returns version stored in the {@link EntitlementCharacteristicDataStore}. */
+    public Optional<String> getVersion() {
+        return mXmlDoc.get(ResponseXmlNode.VERS, ResponseXmlAttributes.VERSION, null);
+    }
+
+    /**
+     * Returns the validity of the version, in seconds. The validity is counted from the time it is
+     * received by the client. If no data exist then returns default value 0.
+     */
+    public long getVersValidity() {
+        return mXmlDoc.get(
+                ResponseXmlNode.VERS,
+                ResponseXmlAttributes.VALIDITY,
+                null)
+                .map(Long::parseLong)
+                .orElse(DEFAULT_VALIDITY);
+    }
+
     public enum ClientBehavior {
         /** Unknown behavior. */
         UNKNOWN_BEHAVIOR,
@@ -204,5 +222,33 @@ public class EntitlementConfiguration {
         //   - VoWiFi.EntitlementStatus=2 (INCOMPATIBLE_STATE)
         //   - SMSoIP.EntitlementStatus=2 (INCOMPATIBLE_STATE)
         update(null);
+    }
+
+    /** Reverts to the default configurations except the version and validity. */
+    public void resetConfigsExceptVers() {
+        String rawXml =
+                "<wap-provisioningdoc version=\"1.1\">"
+                + "  <characteristic type=\"VERS\">"
+                + "    <parm name=\"version\" value=\"" + getVersion() + "\"/>"
+                + "    <parm name=\"validity\" value=\"" + getVersValidity() + "\"/>"
+                + "  </characteristic>"
+                + "  <characteristic type=\"TOKEN\">"
+                + "    <parm name=\"token\" value=\"\"/>"
+                + "    <parm name=\"validity\" value=\"0\"/>"
+                + "  </characteristic>"
+                + "  <characteristic type=\"APPLICATION\">"
+                + "    <parm name=\"AppID\" value=\"ap2003\"/>"
+                + "    <parm name=\"EntitlementStatus\" value=\"2\"/>"
+                + "  </characteristic>"
+                + "  <characteristic type=\"APPLICATION\">"
+                + "    <parm name=\"AppID\" value=\"ap2004\"/>"
+                + "    <parm name=\"EntitlementStatus\" value=\"2\"/>"
+                + "  </characteristic>"
+                + "  <characteristic type=\"APPLICATION\">"
+                + "    <parm name=\"AppID\" value=\"ap2005\"/>"
+                + "    <parm name=\"EntitlementStatus\" value=\"2\"/>"
+                + "  </characteristic>"
+                + "</wap-provisioningdoc>";
+        update(rawXml);
     }
 }

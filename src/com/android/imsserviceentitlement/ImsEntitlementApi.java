@@ -23,6 +23,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
 import com.android.imsserviceentitlement.entitlement.EntitlementConfiguration;
+import com.android.imsserviceentitlement.entitlement.EntitlementConfiguration.ClientBehavior;
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
 import com.android.imsserviceentitlement.fcm.FcmTokenStore;
 import com.android.imsserviceentitlement.fcm.FcmUtils;
@@ -96,6 +97,10 @@ public class ImsEntitlementApi {
         requestBuilder.setTerminalModel("modelY");
         requestBuilder.setTerminalSoftwareVersion("versionZ");
         requestBuilder.setAcceptContentType(ServiceEntitlementRequest.ACCEPT_CONTENT_TYPE_XML);
+        if (mNeedsImsProvisioning) {
+            mLastEntitlementConfiguration.getVersion().ifPresent(
+                    version -> requestBuilder.setConfigurationVersion(Integer.parseInt(version)));
+        }
         ServiceEntitlementRequest request = requestBuilder.build();
 
         XmlDoc entitlementXmlDoc = null;
@@ -132,23 +137,41 @@ public class ImsEntitlementApi {
         return entitlementXmlDoc == null ? null : toEntitlementResult(entitlementXmlDoc);
     }
 
-    private static EntitlementResult toEntitlementResult(XmlDoc doc) {
-        EntitlementResult.Builder builder =
-                EntitlementResult.builder()
-                        .setVowifiStatus(Ts43VowifiStatus.builder(doc).build())
-                        .setVolteStatus(Ts43VolteStatus.builder(doc).build())
-                        .setSmsoveripStatus(Ts43SmsOverIpStatus.builder(doc).build());
-        doc.get(
-                ResponseXmlNode.APPLICATION,
-                ResponseXmlAttributes.SERVER_FLOW_URL,
-                ServiceEntitlement.APP_VOWIFI)
-                .ifPresent(url -> builder.setEmergencyAddressWebUrl(url));
-        doc.get(
-                ResponseXmlNode.APPLICATION,
-                ResponseXmlAttributes.SERVER_FLOW_USER_DATA,
-                ServiceEntitlement.APP_VOWIFI)
-                .ifPresent(userData -> builder.setEmergencyAddressWebData(userData));
+    private EntitlementResult toEntitlementResult(XmlDoc doc) {
+        EntitlementResult.Builder builder = EntitlementResult.builder();
+        ClientBehavior clientBehavior = mLastEntitlementConfiguration.entitlementValidation();
+
+        if (mNeedsImsProvisioning && isResetToDefault(clientBehavior)) {
+            // keep the entitlement result in default value and reset the configs.
+            if (clientBehavior == ClientBehavior.NEEDS_TO_RESET
+                    || clientBehavior == ClientBehavior.UNKNOWN_BEHAVIOR) {
+                mLastEntitlementConfiguration.reset();
+            } else {
+                mLastEntitlementConfiguration.resetConfigsExceptVers();
+            }
+        } else {
+            builder.setVowifiStatus(Ts43VowifiStatus.builder(doc).build())
+                    .setVolteStatus(Ts43VolteStatus.builder(doc).build())
+                    .setSmsoveripStatus(Ts43SmsOverIpStatus.builder(doc).build());
+            doc.get(
+                    ResponseXmlNode.APPLICATION,
+                    ResponseXmlAttributes.SERVER_FLOW_URL,
+                    ServiceEntitlement.APP_VOWIFI)
+                    .ifPresent(url -> builder.setEmergencyAddressWebUrl(url));
+            doc.get(
+                    ResponseXmlNode.APPLICATION,
+                    ResponseXmlAttributes.SERVER_FLOW_USER_DATA,
+                    ServiceEntitlement.APP_VOWIFI)
+                    .ifPresent(userData -> builder.setEmergencyAddressWebData(userData));
+        }
         return builder.build();
+    }
+
+    private boolean isResetToDefault(ClientBehavior clientBehavior) {
+        return clientBehavior == ClientBehavior.UNKNOWN_BEHAVIOR
+                || clientBehavior == ClientBehavior.NEEDS_TO_RESET
+                || clientBehavior == ClientBehavior.NEEDS_TO_RESET_EXCEPT_VERS
+                || clientBehavior == ClientBehavior.NEEDS_TO_RESET_EXCEPT_VERS_UNTIL_SETTING_ON;
     }
 
     private CarrierConfig getCarrierConfig(Context context) {
