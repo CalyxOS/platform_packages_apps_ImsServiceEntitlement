@@ -71,7 +71,8 @@ public class ImsEntitlementPollingService extends JobService {
      */
     private final SparseArray<EntitlementPollingTask> mTasks = new SparseArray<>();
 
-    @VisibleForTesting EntitlementPollingTask mOngoingTask;
+    @VisibleForTesting
+    EntitlementPollingTask mOngoingTask;
 
     @Override
     @VisibleForTesting
@@ -200,7 +201,6 @@ public class ImsEntitlementPollingService extends JobService {
             if (mNeedsImsProvisioning) {
                 // TODO(b/190476343): Unify EntitlementResult and EntitlementConfiguration.
                 doImsEntitlementCheck();
-                checkVersValidity();
             } else {
                 doWfcEntitlementCheck();
             }
@@ -211,6 +211,10 @@ public class ImsEntitlementPollingService extends JobService {
             try {
                 EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
                 Log.d(TAG, "Entitlement result: " + result);
+
+                if (performRetryIfNeeded(result)) {
+                    return;
+                }
 
                 if (shouldTurnOffWfc(result)) {
                     mImsUtils.setVowifiProvisioned(false);
@@ -241,6 +245,7 @@ public class ImsEntitlementPollingService extends JobService {
                 mSmsoipResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
                 Log.d(TAG, "checkEntitlementStatus failed.", e);
             }
+            checkVersValidity();
         }
 
         @WorkerThread
@@ -252,6 +257,11 @@ public class ImsEntitlementPollingService extends JobService {
             try {
                 EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
                 Log.d(TAG, "Entitlement result: " + result);
+
+                if (performRetryIfNeeded(result)) {
+                    return;
+                }
+
                 if (shouldTurnOffWfc(result)) {
                     mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED;
                     mImsUtils.disableWfc();
@@ -262,6 +272,22 @@ public class ImsEntitlementPollingService extends JobService {
                 mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
                 Log.d(TAG, "checkEntitlementStatus failed.", e);
             }
+        }
+
+        /**
+         * Performs retry if needed. Returns true if {@link ImsEntitlementPollingService} has
+         * scheduled.
+         */
+        private boolean performRetryIfNeeded(@Nullable EntitlementResult result) {
+            if (result == null || result.getRetryAfterSeconds() < 0) {
+                return false;
+            }
+            mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
+            ImsEntitlementPollingService.enqueueJobWithDelay(
+                    ImsEntitlementPollingService.this,
+                    mSubid,
+                    result.getRetryAfterSeconds());
+            return true;
         }
 
         /**
