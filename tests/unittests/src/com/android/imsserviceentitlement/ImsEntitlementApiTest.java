@@ -53,6 +53,14 @@ import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
+import java.text.SimpleDateFormat;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
+
 @RunWith(AndroidJUnit4.class)
 public class ImsEntitlementApiTest {
     @Rule public final MockitoRule rule = MockitoJUnit.rule();
@@ -239,6 +247,55 @@ public class ImsEntitlementApiTest {
         assertThat(mEntitlementConfiguration.getToken().get()).isEqualTo("NEW_TOKEN");
     }
 
+    @Test
+    public void checkEntitlementStatus_httpResponse503WithDateTime_returnsRetryAfter()
+            throws Exception {
+        setImsProvisioningBool(false);
+        setupImsEntitlementApi(mEntitlementConfiguration);
+        mEntitlementConfiguration.update(RAW_XML);
+        Clock fixedClock = Clock.fixed(Instant.ofEpochSecond(0), ZoneOffset.UTC);
+        ImsEntitlementApi.sClock = fixedClock;
+
+        // While perform fast-authn, throws exception with code 503
+        when(mMockServiceEntitlement.queryEntitlementStatus(
+                ImmutableList.of(ServiceEntitlement.APP_VOWIFI),
+                authenticationRequest("kZYfCEpSsMr88KZVmab5UsZVzl+nWSsX")))
+                .thenThrow(
+                        new ServiceEntitlementException(
+                                ERROR_HTTP_STATUS_NOT_SUCCESS,
+                                503,
+                                getDateTimeAfter(120, fixedClock),
+                                "Invalid connection response"));
+
+        EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
+
+        assertThat(result).isNotNull();
+        assertThat(result.getRetryAfterSeconds()).isEqualTo(120);
+    }
+
+    @Test
+    public void checkEntitlementStatus_httpResponse503WithNumericValue_returnsRetryAfter()
+            throws Exception {
+        setImsProvisioningBool(false);
+        setupImsEntitlementApi(mEntitlementConfiguration);
+        mEntitlementConfiguration.update(RAW_XML);
+        // While perform fast-authn, throws exception with code 503
+        when(mMockServiceEntitlement.queryEntitlementStatus(
+                ImmutableList.of(ServiceEntitlement.APP_VOWIFI),
+                authenticationRequest("kZYfCEpSsMr88KZVmab5UsZVzl+nWSsX")))
+                .thenThrow(
+                        new ServiceEntitlementException(
+                                ERROR_HTTP_STATUS_NOT_SUCCESS,
+                                503,
+                                "120",
+                                "Invalid connection response"));
+
+        EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
+
+        assertThat(result).isNotNull();
+        assertThat(result.getRetryAfterSeconds()).isEqualTo(120);
+    }
+
     private ServiceEntitlementRequest authenticationRequest(String token) {
         ServiceEntitlementRequest.Builder requestBuilder = ServiceEntitlementRequest.builder();
         if (token != null) {
@@ -270,5 +327,12 @@ public class ImsEntitlementApiTest {
         when(mCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(carrierConfig);
         when(mContext.getSystemService(CarrierConfigManager.class))
                 .thenReturn(mCarrierConfigManager);
+    }
+
+    private String getDateTimeAfter(long seconds, Clock fixedClock) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat(
+                "EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return dateFormat.format(Date.from(fixedClock.instant().plusSeconds(seconds)));
     }
 }

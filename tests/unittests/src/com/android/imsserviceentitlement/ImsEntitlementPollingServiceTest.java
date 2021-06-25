@@ -18,6 +18,7 @@ package com.android.imsserviceentitlement;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -157,6 +158,43 @@ public class ImsEntitlementPollingServiceTest {
         verify(mImsUtils).setVolteProvisioned(true);
         verify(mImsUtils).setVowifiProvisioned(true);
         verify(mImsUtils).setSmsoipProvisioned(true);
+    }
+
+    @Test
+    public void doEntitlementCheck_ImsEntitlementShouldRetry_rescheduleJob() throws Exception {
+        setImsProvisioningBool(true);
+        EntitlementResult entitlementResult =
+                EntitlementResult.builder().setRetryAfterSeconds(120).build();
+        when(mImsEntitlementApi.checkEntitlementStatus()).thenReturn(entitlementResult);
+
+        mService.onStartJob(mJobParameters);
+        mService.mOngoingTask.get(); // wait for job finish.
+
+        verify(mImsUtils, never()).setVolteProvisioned(anyBoolean());
+        verify(mImsUtils, never()).setVowifiProvisioned(anyBoolean());
+        verify(mImsUtils, never()).setSmsoipProvisioned(anyBoolean());
+        assertThat(
+                mScheduler.getPendingJob(
+                        jobIdWithSubId(JobManager.QUERY_ENTITLEMENT_STATUS_JOB_ID, SUB_ID)))
+                .isNotNull();
+    }
+
+    @Test
+    public void doEntitlementCheck_WfcEntitlementShouldRetry_rescheduleJob() throws Exception {
+        EntitlementResult entitlementResult =
+                EntitlementResult.builder().setRetryAfterSeconds(120).build();
+        when(mImsEntitlementApi.checkEntitlementStatus()).thenReturn(entitlementResult);
+
+        mService.onStartJob(mJobParameters);
+        mService.mOngoingTask.get(); // wait for job finish.
+
+        verify(mImsUtils, never()).setVolteProvisioned(anyBoolean());
+        verify(mImsUtils, never()).setVowifiProvisioned(anyBoolean());
+        verify(mImsUtils, never()).setSmsoipProvisioned(anyBoolean());
+        assertThat(
+                mScheduler.getPendingJob(
+                        jobIdWithSubId(JobManager.QUERY_ENTITLEMENT_STATUS_JOB_ID, SUB_ID)))
+                .isNotNull();
     }
 
     @Test
