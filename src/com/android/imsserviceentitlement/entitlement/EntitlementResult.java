@@ -51,7 +51,8 @@ public abstract class EntitlementResult {
                 .setSmsoveripStatus(INACTIVE_SMSOVERIP_STATUS)
                 .setEmergencyAddressWebUrl("")
                 .setEmergencyAddressWebData("")
-                .setTermsAndConditionsWebUrl("");
+                .setTermsAndConditionsWebUrl("")
+                .setRetryAfterSeconds(-1);
     }
 
     /** The entitlement and service status of VoWiFi. */
@@ -66,6 +67,8 @@ public abstract class EntitlementResult {
     public abstract String getEmergencyAddressWebData();
     /** The URL to the WFC T&C web form. */
     public abstract String getTermsAndConditionsWebUrl();
+    /** Service temporary unavailable, retry the status check after a delay in seconds. */
+    public abstract long getRetryAfterSeconds();
 
     /** Builder of {@link EntitlementResult}. */
     @AutoValue.Builder
@@ -77,6 +80,7 @@ public abstract class EntitlementResult {
         public abstract Builder setEmergencyAddressWebUrl(String emergencyAddressWebUrl);
         public abstract Builder setEmergencyAddressWebData(String emergencyAddressWebData);
         public abstract Builder setTermsAndConditionsWebUrl(String termsAndConditionsWebUrl);
+        public abstract Builder setRetryAfterSeconds(long retryAfter);
     }
 
     @Override
@@ -88,6 +92,7 @@ public abstract class EntitlementResult {
         builder.append(",getEmergencyAddressWebUrl=").append(opaque(getEmergencyAddressWebUrl()));
         builder.append(",getEmergencyAddressWebData=").append(opaque(getEmergencyAddressWebData()));
         builder.append(",getTermsAndConditionsWebUrl=").append(getTermsAndConditionsWebUrl());
+        builder.append(",getRetryAfter=").append(getRetryAfterSeconds());
         builder.append("}");
         return builder.toString();
     }
