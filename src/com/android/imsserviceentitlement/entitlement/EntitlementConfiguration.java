@@ -229,7 +229,7 @@ public class EntitlementConfiguration {
         String rawXml =
                 "<wap-provisioningdoc version=\"1.1\">"
                 + "  <characteristic type=\"VERS\">"
-                + "    <parm name=\"version\" value=\"" + getVersion() + "\"/>"
+                + "    <parm name=\"version\" value=\"" + getVersion().get() + "\"/>"
                 + "    <parm name=\"validity\" value=\"" + getVersValidity() + "\"/>"
                 + "  </characteristic>"
                 + "  <characteristic type=\"TOKEN\">"
