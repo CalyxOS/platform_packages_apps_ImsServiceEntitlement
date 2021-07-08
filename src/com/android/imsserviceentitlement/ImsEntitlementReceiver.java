@@ -68,7 +68,8 @@ public class ImsEntitlementReceiver extends BroadcastReceiver {
                         SubscriptionManager.INVALID_SIM_SLOT_INDEX);
         Dependencies dependencies = createDependency(context, currentSubId);
         if (!dependencies.userManager.isSystemUser()
-                || !TelephonyUtils.isImsProvisioningRequired(context, currentSubId)) {
+                || !TelephonyUtils.isImsProvisioningRequired(context, currentSubId)
+                || !SubscriptionManager.isValidSubscriptionId(currentSubId)) {
             return;
         }
 
@@ -89,9 +90,6 @@ public class ImsEntitlementReceiver extends BroadcastReceiver {
     private void handleCarrierConfigChanged(
             Context context, int currentSubId, int slotId, JobManager jobManager,
             PendingResult result) {
-        if (!SubscriptionManager.isValidSubscriptionId(currentSubId)) {
-            return;
-        }
         boolean shouldQuery = false;
 
         // Handle device boot up.
