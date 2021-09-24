@@ -77,6 +77,11 @@ public class TelephonyUtils {
         return mTelephonyManager.getSimSpecificCarrierId();
     }
 
+    /** Returns SIM card application state. */
+    public int getSimApplicationState() {
+        return mTelephonyManager.getSimApplicationState();
+    }
+
     /**
      * Returns {@code true} if the {@code subId} still point to a actived SIM; {@code false}
      * otherwise.
