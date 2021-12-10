@@ -57,7 +57,7 @@ public class ImsUtilsTest {
     }
 
     @Test
-    public void disableAndResetVoWiFiImsSettings_hasCarrierConfig_() {
+    public void disableAndResetVoWiFiImsSettings_hasCarrierConfig() {
         PersistableBundle carrierConfig = new PersistableBundle();
         carrierConfig.putInt(CarrierConfigManager.KEY_CARRIER_DEFAULT_WFC_IMS_MODE_INT, 1);
         carrierConfig.putInt(CarrierConfigManager.KEY_CARRIER_DEFAULT_WFC_IMS_ROAMING_MODE_INT, 2);
@@ -66,7 +66,18 @@ public class ImsUtilsTest {
 
         imsUtils.disableAndResetVoWiFiImsSettings();
 
+        verify(mMockImsMmTelManager).setVoWiFiSettingEnabled(eq(false));
         verify(mMockImsMmTelManager).setVoWiFiModeSetting(eq(1));
         verify(mMockImsMmTelManager).setVoWiFiRoamingModeSetting(eq(2));
+    }
+
+    @Test
+    public void disableWfc() {
+        ImsUtils imsUtils = new ImsUtils(
+                new PersistableBundle(), mMockImsMmTelManager, mMockProvisioningManager);
+
+        imsUtils.disableWfc();
+
+        verify(mMockImsMmTelManager).setVoWiFiSettingEnabled(false);
     }
 }
