@@ -69,23 +69,6 @@ public class FcmRegistrationService extends JobService {
     }
 
     @Override
-    public void onCreate() {
-        super.onCreate();
-        try {
-            mApp = FirebaseApp.getInstance();
-        } catch (IllegalStateException e) {
-            Log.d(TAG, "initialize FirebaseApp");
-            mApp = FirebaseApp.initializeApp(
-                    this,
-                    new FirebaseOptions.Builder()
-                            .setApplicationId(getResources().getString(R.string.fcm_app_id))
-                            .setProjectId(getResources().getString(R.string.fcm_project_id))
-                            .setApiKey(getResources().getString(R.string.fcm_api_key))
-                            .build());
-        }
-    }
-
-    @Override
     public boolean onStartJob(JobParameters params) {
         mOngoingTask = new AsyncTask<JobParameters, Void, Void>() {
             @Override
@@ -108,13 +91,32 @@ public class FcmRegistrationService extends JobService {
      * The token changes when the InstanceID becomes invalid (e.g. app data is deleted).
      */
     protected void onHandleWork(JobParameters params) {
+        int[] subIds = TelephonyUtils.getSubIdsWithFcmSupported(this);
+        if (subIds.length == 0 && mFakeInstanceID == null) {
+            jobFinished(params, false);
+            return;
+        }
+
+        try {
+            mApp = FirebaseApp.getInstance();
+        } catch (IllegalStateException e) {
+            Log.d(TAG, "initialize FirebaseApp");
+            mApp = FirebaseApp.initializeApp(
+                    this,
+                    new FirebaseOptions.Builder()
+                            .setApplicationId(getResources().getString(R.string.fcm_app_id))
+                            .setProjectId(getResources().getString(R.string.fcm_project_id))
+                            .setApiKey(getResources().getString(R.string.fcm_api_key))
+                            .build());
+        }
+
         boolean wantsReschedule = false;
         FirebaseInstanceId instanceID = getFirebaseInstanceId();
         if (instanceID == null) {
             Log.d(TAG, "Cannot get fcm token because FirebaseInstanceId is null");
             return;
         }
-        for (int subId : TelephonyUtils.getSubIdsWithFcmSupported(this)) {
+        for (int subId : subIds) {
             if (!updateFcmToken(instanceID, subId)) {
                 wantsReschedule = true;
             }
