@@ -30,6 +30,7 @@ import com.android.imsserviceentitlement.R;
 import com.android.imsserviceentitlement.job.JobManager;
 import com.android.imsserviceentitlement.utils.TelephonyUtils;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.iid.FirebaseInstanceId;
@@ -110,8 +111,14 @@ public class FcmRegistrationService extends JobService {
      * The token changes when the InstanceID becomes invalid (e.g. app data is deleted).
      */
     protected void onHandleWork(JobParameters params) {
+        ImmutableSet<Integer> subIds = TelephonyUtils.getSubIdsWithFcmSupported(this);
+        if (subIds.size() == 0 && mFakeInstanceID == null) {
+            jobFinished(params, false);
+            return;
+        }
+
         boolean wantsReschedule = false;
-        for (int subId : TelephonyUtils.getSubIdsWithFcmSupported(this)) {
+        for (int subId : subIds) {
             if (!updateFcmToken(getFirebaseInstanceId(), subId)) {
                 wantsReschedule = true;
             }
