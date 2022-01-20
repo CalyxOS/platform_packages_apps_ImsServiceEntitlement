@@ -110,8 +110,14 @@ public class FcmRegistrationService extends JobService {
      * The token changes when the InstanceID becomes invalid (e.g. app data is deleted).
      */
     protected void onHandleWork(JobParameters params) {
+        int[] subIds = TelephonyUtils.getSubIdsWithFcmSupported(this);
+        if (subIds.length == 0 && mFakeInstanceID == null) {
+            jobFinished(params, false);
+            return;
+        }
+
         boolean wantsReschedule = false;
-        for (int subId : TelephonyUtils.getSubIdsWithFcmSupported(this)) {
+        for (int subId : subIds) {
             if (!updateFcmToken(getFirebaseInstanceId(), subId)) {
                 wantsReschedule = true;
             }
