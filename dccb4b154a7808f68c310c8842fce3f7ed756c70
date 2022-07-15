@@ -50,6 +50,30 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "17ff11b7_9ecbec22",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2022-07-15T15:49:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e59a443d_bc759426",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 5
+      },
+      "revId": "dccb4b154a7808f68c310c8842fce3f7ed756c70",
+      "serverId": "35266860-6252-469c-a67d-185064479fc0"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "b47f3c45_07dc2369",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 1
@@ -78,6 +102,30 @@
       "writtenOn": "2022-07-15T13:46:06Z",
       "side": 1,
       "message": "This seems like a null check unrelated to the commit. Split in separate commit?",
+      "range": {
+        "startLine": 94,
+        "startChar": 0,
+        "endLine": 98,
+        "endChar": 9
+      },
+      "revId": "dccb4b154a7808f68c310c8842fce3f7ed756c70",
+      "serverId": "35266860-6252-469c-a67d-185064479fc0"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b16579f3_e4197e60",
+        "filename": "src/com/android/imsserviceentitlement/fcm/FcmRegistrationService.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2022-07-15T15:49:41Z",
+      "side": 1,
+      "message": "No, it returns early if the current subIds don\u0027t need FCM registration.",
+      "parentUuid": "02083ffc_881506ee",
       "range": {
         "startLine": 94,
         "startChar": 0,
