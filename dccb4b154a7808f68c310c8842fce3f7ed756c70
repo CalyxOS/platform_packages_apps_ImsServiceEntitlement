@@ -24,6 +24,30 @@
       "serverId": "35266860-6252-469c-a67d-185064479fc0"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "e59a443d_bc759426",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1000065
+      },
+      "writtenOn": "2022-07-15T13:47:17Z",
+      "side": 1,
+      "message": "I mean add the reason for late registration in the commit message",
+      "parentUuid": "2a12683f_8971add7",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 5
+      },
+      "revId": "dccb4b154a7808f68c310c8842fce3f7ed756c70",
+      "serverId": "35266860-6252-469c-a67d-185064479fc0"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "b47f3c45_07dc2369",
