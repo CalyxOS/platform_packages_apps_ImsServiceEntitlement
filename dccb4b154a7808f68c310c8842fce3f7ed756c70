@@ -1,6 +1,29 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "2a12683f_8971add7",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1000065
+      },
+      "writtenOn": "2022-07-15T13:46:06Z",
+      "side": 1,
+      "message": "Add reason?",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 5
+      },
+      "revId": "dccb4b154a7808f68c310c8842fce3f7ed756c70",
+      "serverId": "35266860-6252-469c-a67d-185064479fc0"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "b47f3c45_07dc2369",
@@ -14,6 +37,29 @@
       "writtenOn": "2022-06-29T17:00:13Z",
       "side": 1,
       "message": "Test: Without this, install new build, open microG, you\u0027ll see Ims\n\nWith this, you shouldn\u0027t see it until required.",
+      "revId": "dccb4b154a7808f68c310c8842fce3f7ed756c70",
+      "serverId": "35266860-6252-469c-a67d-185064479fc0"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "02083ffc_881506ee",
+        "filename": "src/com/android/imsserviceentitlement/fcm/FcmRegistrationService.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 1000065
+      },
+      "writtenOn": "2022-07-15T13:46:06Z",
+      "side": 1,
+      "message": "This seems like a null check unrelated to the commit. Split in separate commit?",
+      "range": {
+        "startLine": 94,
+        "startChar": 0,
+        "endLine": 98,
+        "endChar": 9
+      },
       "revId": "dccb4b154a7808f68c310c8842fce3f7ed756c70",
       "serverId": "35266860-6252-469c-a67d-185064479fc0"
     }
