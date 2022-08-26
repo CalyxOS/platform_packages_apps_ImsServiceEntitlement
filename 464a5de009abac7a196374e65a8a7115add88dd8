@@ -34,6 +34,24 @@
       "parentUuid": "537e6bf0_efbec92f",
       "revId": "464a5de009abac7a196374e65a8a7115add88dd8",
       "serverId": "35266860-6252-469c-a67d-185064479fc0"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c7e72d05_d666b717",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2022-08-26T08:40:10Z",
+      "side": 1,
+      "message": "I guess the way to test it on any carrier would be to then change the check to not return, to see if it registers for that.\n\nTest: With this, install new build, open microG, you shouldn\u0027t see Ims\n\nWith the change I mentioned to test on any carrier, you should see it.",
+      "parentUuid": "e7cd58ec_879c3893",
+      "revId": "464a5de009abac7a196374e65a8a7115add88dd8",
+      "serverId": "35266860-6252-469c-a67d-185064479fc0"
     }
   ]
 }
