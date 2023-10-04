@@ -93,13 +93,23 @@ public class XmlDocTest {
             "<wap-provisioningdoc version=\"1.1\">"
                     + "<characteristic type=\"APPLICATION\">"
                     + "<parm name=\"AppID\" value=\"ap2004\"/>"
-                    + "<parm name=\"ServiceFlow_URL\" value=\"\""
+                    + "<parm name=\"ServiceFlow_URL\" value=\"\"/>"
                     + "<parm name=\"ServiceFlow_UserData\" value=\"\"/>"
                     + "</characteristic>"
                     + "</wap-provisioningdoc>";
 
-    // A XML sample with multiple appIDs
+    // A XML sample with server URL unset and user data set.
     private static final String AUTH_RESPONSE_XML_5 =
+            "<wap-provisioningdoc version=\"1.1\">"
+                    + "<characteristic type=\"APPLICATION\">"
+                    + "<parm name=\"AppID\" value=\"ap2004\"/>"
+                    + "<parm name=\"ServiceFlow_URL\" value=\"\"/>"
+                    + "<parm name=\"ServiceFlow_UserData\" value=\"TEST_DATA\"/>"
+                    + "</characteristic>"
+                    + "</wap-provisioningdoc>";
+
+    // A XML sample with multiple appIDs
+    private static final String AUTH_RESPONSE_XML_6 =
             "<wap-provisioningdoc version=\"1.1\">"
                     + "<characteristic type=\"APPLICATION\">"
                     + "<parm name=\"AppID\" value=\"ap2004\"/>"
@@ -160,6 +170,15 @@ public class XmlDocTest {
     @Test
     public void parseAuthenticateResponse5() {
         XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_5);
+
+        assertThat(xmlDoc.get("APPLICATION", "ServiceFlow_URL", "ap2004").isPresent()).isFalse();
+        assertThat(
+                xmlDoc.get("APPLICATION", "ServiceFlow_UserData", "ap2004").isPresent()).isTrue();
+    }
+
+    @Test
+    public void parseAuthenticateResponse6() {
+        XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_6);
 
         assertThat(xmlDoc.get("APPLICATION", "EntitlementStatus", "ap2004").get()).isEqualTo("0");
         assertThat(xmlDoc.get("APPLICATION", "EntitlementStatus", "ap2005").get()).isEqualTo("1");
