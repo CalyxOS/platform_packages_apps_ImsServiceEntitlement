@@ -16,6 +16,13 @@
 
 package com.android.imsserviceentitlement;
 
+import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED;
+import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__ENABLED;
+import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
+import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.EntitlementVersion.ENTITLEMENT_VERSION_EIGHT;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.EntitlementVersion.ENTITLEMENT_VERSION_TWO;
+
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -37,15 +44,17 @@ import androidx.test.runner.AndroidJUnit4;
 
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
 import com.android.imsserviceentitlement.job.JobManager;
+import com.android.imsserviceentitlement.ts43.Ts43Constants.EntitlementStatus;
 import com.android.imsserviceentitlement.ts43.Ts43SmsOverIpStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VolteStatus;
+import com.android.imsserviceentitlement.ts43.Ts43VonrStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.AddrStatus;
-import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.EntitlementStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.ProvStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.TcStatus;
 import com.android.imsserviceentitlement.utils.ImsUtils;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -72,9 +81,12 @@ public class ImsEntitlementPollingServiceTest {
 
     private ImsEntitlementPollingService mService;
     private JobScheduler mScheduler;
+    private PersistableBundle mCarrierConfig;
 
     private static final int SUB_ID = 1;
     private static final int SLOT_ID = 0;
+    private static final String KEY_ENTITLEMENT_VERSION_INT =
+            "imsserviceentitlement.entitlement_version_int";
 
     @Before
     public void setUp() throws Exception {
@@ -89,6 +101,12 @@ public class ImsEntitlementPollingServiceTest {
         setJobParameters();
         setWfcEnabledByUser(true);
         setImsProvisioningBool(false);
+        setEntitlementVersion(ENTITLEMENT_VERSION_TWO);
+    }
+
+    @After
+    public void tearDown() {
+        mCarrierConfig = null;
     }
 
     @Test
@@ -140,6 +158,30 @@ public class ImsEntitlementPollingServiceTest {
         verify(mImsUtils).setVolteProvisioned(false);
         verify(mImsUtils).setVowifiProvisioned(false);
         verify(mImsUtils).setSmsoipProvisioned(false);
+        verify(mImsUtils, never()).setVonrProvisioned(anyBoolean());
+        assertThat(mService.mOngoingTask.getVonrResult())
+                .isEqualTo(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT);
+    }
+
+    @Test
+    public void doV8EntitlementCheck_shouldTurnOffImsApps_setAllProvisionedFalse()
+            throws Exception {
+        setImsProvisioningBool(true);
+        setEntitlementVersion(ENTITLEMENT_VERSION_EIGHT);
+        EntitlementResult entitlementResult =
+                getImsEntitlementResult(
+                        sDisableVoWiFi, sDisableVoLte, sDisableVonr, sDisableSmsoverip);
+        when(mImsEntitlementApi.checkEntitlementStatus()).thenReturn(entitlementResult);
+
+        mService.onStartJob(mJobParameters);
+        mService.mOngoingTask.get(); // wait for job finish.
+
+        verify(mImsUtils).setVolteProvisioned(false);
+        verify(mImsUtils).setVowifiProvisioned(false);
+        verify(mImsUtils).setSmsoipProvisioned(false);
+        verify(mImsUtils).setVonrProvisioned(false);
+        assertThat(mService.mOngoingTask.getVonrResult())
+                .isEqualTo(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED);
     }
 
     @Test
@@ -158,13 +200,54 @@ public class ImsEntitlementPollingServiceTest {
         verify(mImsUtils).setVolteProvisioned(true);
         verify(mImsUtils).setVowifiProvisioned(true);
         verify(mImsUtils).setSmsoipProvisioned(true);
+        verify(mImsUtils, never()).setVonrProvisioned(anyBoolean());
+        assertThat(mService.mOngoingTask.getVonrResult())
+                .isEqualTo(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT);
+    }
+
+    @Test
+    public void doV8EntitlementCheck_shouldTurnOnImsApps_setAllProvisionedTrue() throws Exception {
+        setImsProvisioningBool(true);
+        setEntitlementVersion(ENTITLEMENT_VERSION_EIGHT);
+        EntitlementResult entitlementResult =
+                getImsEntitlementResult(sEnableVoWiFi, sEnableVoLte, sEnableVonr, sEnableSmsoverip);
+        when(mImsEntitlementApi.checkEntitlementStatus()).thenReturn(entitlementResult);
+
+        mService.onStartJob(mJobParameters);
+        mService.mOngoingTask.get(); // wait for job finish.
+
+        verify(mImsUtils).setVolteProvisioned(true);
+        verify(mImsUtils).setVowifiProvisioned(true);
+        verify(mImsUtils).setSmsoipProvisioned(true);
+        verify(mImsUtils).setVonrProvisioned(true);
+        assertThat(mService.mOngoingTask.getVonrResult())
+                .isEqualTo(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__ENABLED);
+    }
+
+    @Test
+    public void doV8EntitlementCheck_entitlementResultNull_setAllProvisionedTrue()
+            throws Exception {
+        setImsProvisioningBool(true);
+        setEntitlementVersion(ENTITLEMENT_VERSION_EIGHT);
+        EntitlementResult entitlementResult = null;
+        when(mImsEntitlementApi.checkEntitlementStatus()).thenReturn(entitlementResult);
+
+        mService.onStartJob(mJobParameters);
+        mService.mOngoingTask.get(); // wait for job finish.
+
+        verify(mImsUtils).setVolteProvisioned(true);
+        verify(mImsUtils).setVowifiProvisioned(true);
+        verify(mImsUtils).setSmsoipProvisioned(true);
+        verify(mImsUtils).setVonrProvisioned(true);
+        assertThat(mService.mOngoingTask.getVonrResult())
+                .isEqualTo(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__ENABLED);
     }
 
     @Test
     public void doEntitlementCheck_ImsEntitlementShouldRetry_rescheduleJob() throws Exception {
         setImsProvisioningBool(true);
         EntitlementResult entitlementResult =
-                EntitlementResult.builder().setRetryAfterSeconds(120).build();
+                EntitlementResult.builder(false).setRetryAfterSeconds(120).build();
         when(mImsEntitlementApi.checkEntitlementStatus()).thenReturn(entitlementResult);
 
         mService.onStartJob(mJobParameters);
@@ -173,6 +256,9 @@ public class ImsEntitlementPollingServiceTest {
         verify(mImsUtils, never()).setVolteProvisioned(anyBoolean());
         verify(mImsUtils, never()).setVowifiProvisioned(anyBoolean());
         verify(mImsUtils, never()).setSmsoipProvisioned(anyBoolean());
+        verify(mImsUtils, never()).setVonrProvisioned(anyBoolean());
+        assertThat(mService.mOngoingTask.getVonrResult())
+                .isEqualTo(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT);
         assertThat(
                 mScheduler.getPendingJob(
                         jobIdWithSubId(JobManager.QUERY_ENTITLEMENT_STATUS_JOB_ID, SUB_ID)))
@@ -182,7 +268,7 @@ public class ImsEntitlementPollingServiceTest {
     @Test
     public void doEntitlementCheck_WfcEntitlementShouldRetry_rescheduleJob() throws Exception {
         EntitlementResult entitlementResult =
-                EntitlementResult.builder().setRetryAfterSeconds(120).build();
+                EntitlementResult.builder(false).setRetryAfterSeconds(120).build();
         when(mImsEntitlementApi.checkEntitlementStatus()).thenReturn(entitlementResult);
 
         mService.onStartJob(mJobParameters);
@@ -191,10 +277,36 @@ public class ImsEntitlementPollingServiceTest {
         verify(mImsUtils, never()).setVolteProvisioned(anyBoolean());
         verify(mImsUtils, never()).setVowifiProvisioned(anyBoolean());
         verify(mImsUtils, never()).setSmsoipProvisioned(anyBoolean());
+        verify(mImsUtils, never()).setVonrProvisioned(anyBoolean());
+        assertThat(mService.mOngoingTask.getVonrResult())
+                .isEqualTo(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT);
         assertThat(
                 mScheduler.getPendingJob(
                         jobIdWithSubId(JobManager.QUERY_ENTITLEMENT_STATUS_JOB_ID, SUB_ID)))
                 .isNotNull();
+    }
+
+    @Test
+    public void doEntitlementCheck_runtimeException_entitlementUpdateFail() throws Exception {
+        setImsProvisioningBool(true);
+        when(mImsEntitlementApi.checkEntitlementStatus()).thenThrow(new RuntimeException());
+
+        mService.onStartJob(mJobParameters);
+        mService.mOngoingTask.get(); // wait for job finish.
+
+        assertThat(mService.mOngoingTask.getVonrResult())
+                .isEqualTo(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED);
+    }
+
+    @Test
+    public void doWfcEntitlementCheck_runtimeException_entitlementUpdateFail() throws Exception {
+        when(mImsEntitlementApi.checkEntitlementStatus()).thenThrow(new RuntimeException());
+
+        mService.onStartJob(mJobParameters);
+        mService.mOngoingTask.get(); // wait for job finish.
+
+        assertThat(mService.mOngoingTask.getVowifiResult())
+                .isEqualTo(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED);
     }
 
     @Test
@@ -235,29 +347,51 @@ public class ImsEntitlementPollingServiceTest {
     }
 
     private void setImsProvisioningBool(boolean provisioning) {
-        PersistableBundle carrierConfig = new PersistableBundle();
-        carrierConfig.putBoolean(
+        initializeCarrierConfig();
+        mCarrierConfig.putBoolean(
                 CarrierConfigManager.ImsServiceEntitlement.KEY_IMS_PROVISIONING_BOOL,
                 provisioning
         );
-        when(mCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(carrierConfig);
-        when(mContext.getSystemService(CarrierConfigManager.class))
-                .thenReturn(mCarrierConfigManager);
+    }
+
+    private void setEntitlementVersion(int entitlementVersion) {
+        initializeCarrierConfig();
+        mCarrierConfig.putInt(KEY_ENTITLEMENT_VERSION_INT, entitlementVersion);
+    }
+
+    private void initializeCarrierConfig() {
+        if (mCarrierConfig == null) {
+            mCarrierConfig = new PersistableBundle();
+            when(mCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(mCarrierConfig);
+            when(mContext.getSystemService(CarrierConfigManager.class))
+                    .thenReturn(mCarrierConfigManager);
+        }
     }
 
     private static EntitlementResult getEntitlementResult(Ts43VowifiStatus vowifiStatus) {
-        return EntitlementResult.builder()
-                .setVowifiStatus(vowifiStatus)
-                .build();
+        return EntitlementResult.builder(false).setVowifiStatus(vowifiStatus).build();
     }
 
     private static EntitlementResult getImsEntitlementResult(
             Ts43VowifiStatus vowifiStatus,
             Ts43VolteStatus volteStatus,
             Ts43SmsOverIpStatus smsOverIpStatus) {
-        return EntitlementResult.builder()
+        return EntitlementResult.builder(false)
                 .setVowifiStatus(vowifiStatus)
                 .setVolteStatus(volteStatus)
+                .setSmsoveripStatus(smsOverIpStatus)
+                .build();
+    }
+
+    private static EntitlementResult getImsEntitlementResult(
+            Ts43VowifiStatus vowifiStatus,
+            Ts43VolteStatus volteStatus,
+            Ts43VonrStatus vonrStatus,
+            Ts43SmsOverIpStatus smsOverIpStatus) {
+        return EntitlementResult.builder(false)
+                .setVowifiStatus(vowifiStatus)
+                .setVolteStatus(volteStatus)
+                .setVonrStatus(vonrStatus)
                 .setSmsoveripStatus(smsOverIpStatus)
                 .build();
     }
@@ -290,6 +424,18 @@ public class ImsEntitlementPollingServiceTest {
     private static final Ts43VolteStatus sEnableVoLte =
             Ts43VolteStatus.builder()
                     .setEntitlementStatus(EntitlementStatus.ENABLED)
+                    .build();
+
+    private static final Ts43VonrStatus sDisableVonr =
+            Ts43VonrStatus.builder()
+                    .setHomeEntitlementStatus(EntitlementStatus.DISABLED)
+                    .setRoamingEntitlementStatus(EntitlementStatus.DISABLED)
+                    .build();
+
+    private static final Ts43VonrStatus sEnableVonr =
+            Ts43VonrStatus.builder()
+                    .setHomeEntitlementStatus(EntitlementStatus.ENABLED)
+                    .setRoamingEntitlementStatus(EntitlementStatus.ENABLED)
                     .build();
 
     private static final Ts43SmsOverIpStatus sDisableSmsoverip =

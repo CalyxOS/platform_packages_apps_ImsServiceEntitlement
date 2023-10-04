@@ -33,9 +33,9 @@ import com.android.imsserviceentitlement.entitlement.EntitlementResult;
 import com.android.imsserviceentitlement.fcm.FcmTokenStore;
 import com.android.imsserviceentitlement.fcm.FcmUtils;
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlAttributes;
-import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlNode;
 import com.android.imsserviceentitlement.ts43.Ts43SmsOverIpStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VolteStatus;
+import com.android.imsserviceentitlement.ts43.Ts43VonrStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus;
 import com.android.imsserviceentitlement.utils.TelephonyUtils;
 import com.android.imsserviceentitlement.utils.XmlDoc;
@@ -113,6 +113,8 @@ public class ImsEntitlementApi {
                 token -> requestBuilder.setAuthenticationToken(token));
         FcmUtils.fetchFcmToken(mContext, mSubId);
         requestBuilder.setNotificationToken(FcmTokenStore.getToken(mContext, mSubId));
+        int entitlementVersion = TelephonyUtils.getEntitlementVersion(mContext, mSubId);
+        requestBuilder.setEntitlementVersion(String.valueOf(entitlementVersion));
         requestBuilder.setAcceptContentType(ServiceEntitlementRequest.ACCEPT_CONTENT_TYPE_XML);
         if (mNeedsImsProvisioning) {
             requestBuilder.setConfigurationVersion(
@@ -132,7 +134,7 @@ public class ImsEntitlementApi {
                             : ImmutableList.of(ServiceEntitlement.APP_VOWIFI),
                     request);
             entitlementXmlDoc = new XmlDoc(rawXml);
-            mLastEntitlementConfiguration.update(rawXml);
+            mLastEntitlementConfiguration.update(entitlementVersion, rawXml);
             // Reset the retry count if no exception from queryEntitlementStatus()
             mRetryFullAuthenticationCount = AUTHENTICATION_RETRIES;
         } catch (ServiceEntitlementException e) {
@@ -152,8 +154,8 @@ public class ImsEntitlementApi {
                     // For handling the case of HTTP_UNAVAILABLE(503), client would perform the
                     // retry for the delay of Retry-After.
                     Log.d(TAG, "Server asking for retry. retryAfter = " + e.getRetryAfter());
-                    return EntitlementResult
-                            .builder()
+                    boolean isDefaultActive = TelephonyUtils.getDefaultStatus(mContext, mSubId);
+                    return EntitlementResult.builder(isDefaultActive)
                             .setRetryAfterSeconds(parseDelaySecondsByRetryAfter(e.getRetryAfter()))
                             .build();
                 }
@@ -184,30 +186,21 @@ public class ImsEntitlementApi {
     }
 
     private EntitlementResult toEntitlementResult(XmlDoc doc) {
-        EntitlementResult.Builder builder = EntitlementResult.builder();
+        boolean isDefaultActive = TelephonyUtils.getDefaultStatus(mContext, mSubId);
+        EntitlementResult.Builder builder = EntitlementResult.builder(isDefaultActive);
         ClientBehavior clientBehavior = mLastEntitlementConfiguration.entitlementValidation();
 
         if (mNeedsImsProvisioning && isResetToDefault(clientBehavior)) {
             // keep the entitlement result in default value and reset the configs.
-            if (clientBehavior == ClientBehavior.NEEDS_TO_RESET
-                    || clientBehavior == ClientBehavior.UNKNOWN_BEHAVIOR) {
-                mLastEntitlementConfiguration.reset();
-            } else {
-                mLastEntitlementConfiguration.resetConfigsExceptVers();
-            }
+            mLastEntitlementConfiguration.reset(clientBehavior);
         } else {
             builder.setVowifiStatus(Ts43VowifiStatus.builder(doc).build())
                     .setVolteStatus(Ts43VolteStatus.builder(doc).build())
+                    .setVonrStatus(Ts43VonrStatus.builder(doc).build())
                     .setSmsoveripStatus(Ts43SmsOverIpStatus.builder(doc).build());
-            doc.get(
-                    ResponseXmlNode.APPLICATION,
-                    ResponseXmlAttributes.SERVER_FLOW_URL,
-                    ServiceEntitlement.APP_VOWIFI)
+            doc.getFromVowifi(ResponseXmlAttributes.SERVER_FLOW_URL)
                     .ifPresent(url -> builder.setEmergencyAddressWebUrl(url));
-            doc.get(
-                    ResponseXmlNode.APPLICATION,
-                    ResponseXmlAttributes.SERVER_FLOW_USER_DATA,
-                    ServiceEntitlement.APP_VOWIFI)
+            doc.getFromVowifi(ResponseXmlAttributes.SERVER_FLOW_USER_DATA)
                     .ifPresent(userData -> builder.setEmergencyAddressWebData(userData));
         }
         return builder.build();

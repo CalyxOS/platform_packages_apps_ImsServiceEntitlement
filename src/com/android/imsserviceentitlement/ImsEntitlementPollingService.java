@@ -26,6 +26,7 @@ import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IM
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__SERVICE_TYPE__SMSOIP;
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__SERVICE_TYPE__VOLTE;
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__SERVICE_TYPE__VOWIFI;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.EntitlementVersion.ENTITLEMENT_VERSION_EIGHT;
 
 import android.app.job.JobParameters;
 import android.app.job.JobService;
@@ -149,6 +150,7 @@ public class ImsEntitlementPollingService extends JobService {
         private final TelephonyUtils mTelephonyUtils;
         private final MetricsLogger mMetricsLogger;
         private final int mSubid;
+        private final int mEntitlementVersion;
         private final boolean mNeedsImsProvisioning;
 
         // States for metrics
@@ -157,6 +159,7 @@ public class ImsEntitlementPollingService extends JobService {
         private int mPurpose = IMS_SERVICE_ENTITLEMENT_UPDATED__PURPOSE__UNKNOWN_PURPOSE;
         private int mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT;
         private int mVolteResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT;
+        private int mVonrResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT;
         private int mSmsoipResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT;
 
         EntitlementPollingTask(final JobParameters params, int subId) {
@@ -164,6 +167,8 @@ public class ImsEntitlementPollingService extends JobService {
             this.mImsUtils = ImsUtils.getInstance(ImsEntitlementPollingService.this, subId);
             this.mTelephonyUtils = new TelephonyUtils(ImsEntitlementPollingService.this, subId);
             this.mSubid = subId;
+            this.mEntitlementVersion =
+                    TelephonyUtils.getEntitlementVersion(ImsEntitlementPollingService.this, mSubid);
             this.mNeedsImsProvisioning = TelephonyUtils.isImsProvisioningRequired(
                     ImsEntitlementPollingService.this, mSubid);
             this.mImsEntitlementApi = ImsEntitlementPollingService.this.mImsEntitlementApi != null
@@ -233,6 +238,16 @@ public class ImsEntitlementPollingService extends JobService {
                     mVolteResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__ENABLED;
                 }
 
+                if (mEntitlementVersion >= ENTITLEMENT_VERSION_EIGHT) {
+                    if (shouldTurnOffVonrHome(result)) {
+                        mImsUtils.setVonrProvisioned(false);
+                        mVonrResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED;
+                    } else {
+                        mImsUtils.setVonrProvisioned(true);
+                        mVonrResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__ENABLED;
+                    }
+                }
+
                 if (shouldTurnOffSMSoIP(result)) {
                     mImsUtils.setSmsoipProvisioned(false);
                     mSmsoipResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__DISABLED;
@@ -243,6 +258,7 @@ public class ImsEntitlementPollingService extends JobService {
             } catch (RuntimeException e) {
                 mVowifiResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
                 mVolteResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
+                mVonrResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
                 mSmsoipResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__FAILED;
                 Log.d(TAG, "checkEntitlementStatus failed.", e);
             }
@@ -333,6 +349,16 @@ public class ImsEntitlementPollingService extends JobService {
             return !result.getVolteStatus().isActive();
         }
 
+        private boolean shouldTurnOffVonrHome(@Nullable EntitlementResult result) {
+            if (result == null) {
+                Log.d(TAG, "Entitlement API failed to return a result; don't turn off VoNR.");
+                return false;
+            }
+
+            // Only turn off VoNR in Home for known patterns indicating VoNR not activated.
+            return !result.getVonrStatus().isHomeActive();
+        }
+
         private boolean shouldTurnOffSMSoIP(@Nullable EntitlementResult result) {
             if (result == null) {
                 Log.d(TAG, "Entitlement API failed to return a result; don't turn off SMSoIP.");
@@ -364,5 +390,16 @@ public class ImsEntitlementPollingService extends JobService {
                         IMS_SERVICE_ENTITLEMENT_UPDATED__SERVICE_TYPE__SMSOIP, mSmsoipResult);
             }
         }
+
+        @VisibleForTesting
+        int getVonrResult() {
+            return mVonrResult;
+        }
+
+        @VisibleForTesting
+        int getVowifiResult() {
+            return mVowifiResult;
+        }
     }
 }
+

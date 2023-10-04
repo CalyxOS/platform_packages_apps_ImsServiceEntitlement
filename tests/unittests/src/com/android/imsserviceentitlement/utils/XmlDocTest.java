@@ -121,15 +121,93 @@ public class XmlDocTest {
                     + "</characteristic>"
                     + "</wap-provisioningdoc>";
 
+    // A TS43 v8 XML sample with separate 5G config for home and roaming networks
+    private static final String AUTH_RESPONSE_XML_7 =
+            "<wap-provisioningdoc version=\"1.1\">"
+                    + "<characteristic type=\"APPLICATION\">"
+                    + "<parm name=\"AppID\" value=\"ap2003\"/>"
+                    + "<parm name=\"Name\" value=\"Voice over Cellular Entitlement settings\"/>"
+                    + "<characteristic type=\"VoiceOverCellularEntitleInfo\">"
+                    + "<characteristic type=\"RATVoiceEntitleInfoDetails\">"
+                    + "<parm name=\"AccessType\" value=\"2\"/>" // 5G
+                    + "<parm name=\"HomeRoamingNWType\" value=\"2\"/>" // Home network
+                    + "<parm name=\"EntitlementStatus\" value=\"1\"/>" // Enabled
+                    + "<parm name=\"NetworkVoiceIRATCapablity\" value=\"EPS-Fallback\"/>"
+                    + "</characteristic>"
+                    + "<characteristic type=\"RATVoiceEntitleInfoDetails\">"
+                    + "<parm name=\"AccessType\" value=\"2\"/>" // 5G
+                    + "<parm name=\"HomeRoamingNWType\" value=\"3\"/>" // Roaming network
+                    + "<parm name=\"EntitlementStatus\" value=\"2\"/>" // Incompatible
+                    + "<parm name=\"MessageForIncompatible\" value=\"z\"/>"
+                    + "</characteristic>"
+                    + "</characteristic>"
+                    + "</characteristic>"
+                    + "</wap-provisioningdoc>";
+
+    // A TS43 v8 XML sample with single 4G and 5G config for both home and roaming networks
+    private static final String AUTH_RESPONSE_XML_8 =
+            "<wap-provisioningdoc version=\"1.1\">"
+                    + "<characteristic type=\"APPLICATION\">"
+                    + "<parm name=\"AppID\" value=\"ap2003\"/>"
+                    + "<parm name=\"Name\" value=\"Voice over Cellular Entitlement settings\"/>"
+                    + "<characteristic type=\"VoiceOverCellularEntitleInfo\">"
+                    + "<characteristic type=\"RATVoiceEntitleInfoDetails\">"
+                    + "<parm name=\"AccessType\" value=\"1\"/>" // 4G
+                    + "<parm name=\"HomeRoamingNWType\" value=\"1\"/>" // Home&Roaming
+                    + "<parm name=\"EntitlementStatus\" value=\"1\"/>" // Enabled
+                    + "</characteristic>"
+                    + "<characteristic type=\"RATVoiceEntitleInfoDetails\">"
+                    + "<parm name=\"AccessType\" value=\"2\"/>" // 5G
+                    + "<parm name=\"HomeRoamingNWType\" value=\"1\"/>" // Both Home and Roaming
+                    + "<parm name=\"EntitlementStatus\" value=\"1\"/>" // Enabled
+                    + "<parm name=\"NetworkVoiceIRATCapablity\" value=\"EPS-Fallback\"/>"
+                    + "</characteristic>"
+                    + "</characteristic>"
+                    + "</characteristic>"
+                    + "</wap-provisioningdoc>";
+
+    // A TS43 v8 XML sample with single 4G for home network only - unlikely to happen
+    private static final String AUTH_RESPONSE_XML_9 =
+            "<wap-provisioningdoc version=\"1.1\">"
+                    + "<characteristic type=\"APPLICATION\">"
+                    + "<parm name=\"AppID\" value=\"ap2003\"/>"
+                    + "<parm name=\"Name\" value=\"Voice over Cellular Entitlement settings\"/>"
+                    + "<characteristic type=\"VoiceOverCellularEntitleInfo\">"
+                    + "<characteristic type=\"RATVoiceEntitleInfoDetails\">"
+                    + "<parm name=\"AccessType\" value=\"1\"/>" // 4G
+                    + "<parm name=\"HomeRoamingNWType\" value=\"2\"/>" // Home
+                    + "<parm name=\"EntitlementStatus\" value=\"1\"/>" // Enabled
+                    + "</characteristic>"
+                    + "</characteristic>"
+                    + "</characteristic>"
+                    + "</wap-provisioningdoc>";
+
+    // A TS43 v8 XML sample with single 5G for home network only - unlikely to happen
+    private static final String AUTH_RESPONSE_XML_10 =
+            "<wap-provisioningdoc version=\"1.1\">"
+                    + "<characteristic type=\"APPLICATION\">"
+                    + "<parm name=\"AppID\" value=\"ap2003\"/>"
+                    + "<parm name=\"Name\" value=\"Voice over Cellular Entitlement settings\"/>"
+                    + "<characteristic type=\"VoiceOverCellularEntitleInfo\">"
+                    + "<characteristic type=\"RATVoiceEntitleInfoDetails\">"
+                    + "<parm name=\"AccessType\" value=\"2\"/>" // 5G
+                    + "<parm name=\"HomeRoamingNWType\" value=\"2\"/>" // Home
+                    + "<parm name=\"EntitlementStatus\" value=\"1\"/>" // Enabled
+                    + "</characteristic>"
+                    + "</characteristic>"
+                    + "</characteristic>"
+                    + "</wap-provisioningdoc>";
+
     private static final String TOKEN = "kZYfCEpSsMr88KZVmab5UsZVzl+nWSsX";
 
     @Test
     public void parseAuthenticateResponse() {
         XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML);
 
-        assertThat(xmlDoc.get("TOKEN", "token", "ap2004").get()).isEqualTo(TOKEN);
+        assertThat(xmlDoc.getFromToken("token").get()).isEqualTo(TOKEN);
+        assertThat(xmlDoc.getFromVersion("version").get()).isEqualTo("1");
         // Note "&amp;" in input XML are un-escaped to "&".
-        assertThat(xmlDoc.get("APPLICATION", "ServiceFlow_UserData", "ap2004").get())
+        assertThat(xmlDoc.getFromVowifi("ServiceFlow_UserData").get())
                 .isEqualTo("token=Y5vcmc%3D"
                         + "&entitlementStatus=0"
                         + "&protocol=TS43"
@@ -143,9 +221,9 @@ public class XmlDocTest {
     public void parseAuthenticateResponse2() {
         XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_2);
 
-        assertThat(xmlDoc.get("TOKEN", "token", "ap2004").get()).isEqualTo(TOKEN);
+        assertThat(xmlDoc.getFromToken("token").get()).isEqualTo(TOKEN);
         // Note the "&" in input XML is kept as is
-        assertThat(xmlDoc.get("APPLICATION", "ServiceFlow_UserData", "ap2004").get())
+        assertThat(xmlDoc.getFromVowifi("ServiceFlow_UserData").get())
                 .isEqualTo("PostData=U6%2FbQ%2BEP&req_locale=en_US");
     }
 
@@ -154,7 +232,7 @@ public class XmlDocTest {
         XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_3);
 
         // Note the "&amp;amp;" in input XML is un-escaped to "&amp;"
-        assertThat(xmlDoc.get("APPLICATION", "ServiceFlow_UserData", "ap2004").get())
+        assertThat(xmlDoc.getFromVowifi("ServiceFlow_UserData").get())
                 .isEqualTo("PostData=U6%2FbQ%2BEP&amp;l=en_US");
     }
 
@@ -162,25 +240,62 @@ public class XmlDocTest {
     public void parseAuthenticateResponse4() {
         XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_4);
 
-        assertThat(xmlDoc.get("APPLICATION", "ServiceFlow_URL", "ap2004").isPresent()).isFalse();
-        assertThat(
-                xmlDoc.get("APPLICATION", "ServiceFlow_UserData", "ap2004").isPresent()).isFalse();
+        assertThat(xmlDoc.getFromVowifi("ServiceFlow_URL").isPresent()).isFalse();
+        assertThat(xmlDoc.getFromVowifi("ServiceFlow_UserData").isPresent()).isFalse();
     }
 
     @Test
     public void parseAuthenticateResponse5() {
         XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_5);
 
-        assertThat(xmlDoc.get("APPLICATION", "ServiceFlow_URL", "ap2004").isPresent()).isFalse();
-        assertThat(
-                xmlDoc.get("APPLICATION", "ServiceFlow_UserData", "ap2004").isPresent()).isTrue();
+        assertThat(xmlDoc.getFromVowifi("ServiceFlow_URL").isPresent()).isFalse();
+        assertThat(xmlDoc.getFromVowifi("ServiceFlow_UserData").isPresent()).isTrue();
     }
 
     @Test
     public void parseAuthenticateResponse6() {
         XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_6);
 
-        assertThat(xmlDoc.get("APPLICATION", "EntitlementStatus", "ap2004").get()).isEqualTo("0");
-        assertThat(xmlDoc.get("APPLICATION", "EntitlementStatus", "ap2005").get()).isEqualTo("1");
+        assertThat(xmlDoc.getFromVowifi("EntitlementStatus").get()).isEqualTo("0");
+        assertThat(xmlDoc.getFromSmsoverip("EntitlementStatus").get()).isEqualTo("1");
+    }
+
+    @Test
+    public void parseAuthenticateResponse7() {
+        XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_7);
+
+        assertThat(xmlDoc.getFromVonrHome("EntitlementStatus").get()).isEqualTo("1");
+        assertThat(xmlDoc.getFromVonrHome("NetworkVoiceIRATCapablity").get())
+                .isEqualTo("EPS-Fallback");
+        assertThat(xmlDoc.getFromVonrRoaming("EntitlementStatus").get()).isEqualTo("2");
+        assertThat(xmlDoc.getFromVonrRoaming("NetworkVoiceIRATCapablity").isPresent()).isFalse();
+    }
+
+    @Test
+    public void parseAuthenticateResponse8() {
+        XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_8);
+
+        assertThat(xmlDoc.getFromVolte("EntitlementStatus").get()).isEqualTo("1");
+        assertThat(xmlDoc.getFromVonrHome("EntitlementStatus").get()).isEqualTo("1");
+        assertThat(xmlDoc.getFromVonrHome("NetworkVoiceIRATCapablity").get())
+                .isEqualTo("EPS-Fallback");
+        assertThat(xmlDoc.getFromVonrRoaming("EntitlementStatus").get()).isEqualTo("1");
+        assertThat(xmlDoc.getFromVonrRoaming("NetworkVoiceIRATCapablity").get())
+                .isEqualTo("EPS-Fallback");
+    }
+
+    @Test
+    public void parseAuthenticateResponse9() {
+        XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_9);
+
+        assertThat(xmlDoc.getFromVolte("EntitlementStatus").get()).isEqualTo("1");
+    }
+
+    @Test
+    public void parseAuthenticateResponse10() {
+        XmlDoc xmlDoc = new XmlDoc(AUTH_RESPONSE_XML_10);
+
+        assertThat(xmlDoc.getFromVonrHome("EntitlementStatus").get()).isEqualTo("1");
+        assertThat(xmlDoc.getFromVonrRoaming("EntitlementStatus").isPresent()).isFalse();
     }
 }

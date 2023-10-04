@@ -21,6 +21,8 @@ import static android.telephony.TelephonyManager.SIM_STATE_LOADED;
 import static com.android.imsserviceentitlement.entitlement.EntitlementConfiguration.ClientBehavior.NEEDS_TO_RESET;
 import static com.android.imsserviceentitlement.entitlement.EntitlementConfiguration.ClientBehavior.VALID_DURING_VALIDITY;
 import static com.android.imsserviceentitlement.entitlement.EntitlementConfiguration.ClientBehavior.VALID_WITHOUT_DURATION;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.EntitlementVersion.ENTITLEMENT_VERSION_EIGHT;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.EntitlementVersion.ENTITLEMENT_VERSION_TWO;
 import static com.android.imsserviceentitlement.utils.Executors.getAsyncExecutor;
 
 import android.content.BroadcastReceiver;
@@ -72,7 +74,8 @@ public class ImsEntitlementReceiver extends BroadcastReceiver {
         if (!dependencies.userManager.isSystemUser()
                 || !SubscriptionManager.isValidSubscriptionId(currentSubId)
                 || dependencies.telephonyUtils.getSimApplicationState() != SIM_STATE_LOADED
-                || !TelephonyUtils.isImsProvisioningRequired(context, currentSubId)) {
+                || !TelephonyUtils.isImsProvisioningRequired(context, currentSubId)
+                || !isEntitlementVersionSupported(context, currentSubId)) {
             return;
         }
 
@@ -95,18 +98,6 @@ public class ImsEntitlementReceiver extends BroadcastReceiver {
             PendingResult result) {
         boolean shouldQuery = false;
 
-        // Handle device boot up.
-        if (isBootUp(context, slotId)) {
-            ClientBehavior clientBehavior =
-                    new EntitlementConfiguration(context, currentSubId).entitlementValidation();
-            Log.d(TAG, "Device boot up, clientBehavior=" + clientBehavior);
-            if (clientBehavior == VALID_DURING_VALIDITY
-                    || clientBehavior == VALID_WITHOUT_DURATION
-                    || clientBehavior == NEEDS_TO_RESET) {
-                shouldQuery = true;
-            }
-        }
-
         // Handle SIM changed.
         int lastSubId = getAndSetSubId(context, currentSubId, slotId);
         if (currentSubId != lastSubId) {
@@ -116,6 +107,26 @@ public class ImsEntitlementReceiver extends BroadcastReceiver {
                 new EntitlementConfiguration(context, lastSubId).reset();
             }
             shouldQuery = true;
+        }
+
+        // Handle device boot up.
+        if (!shouldQuery && isBootUp(context, slotId)) {
+            EntitlementConfiguration entitlementConfiguration =
+                    new EntitlementConfiguration(context, currentSubId);
+            ClientBehavior clientBehavior = entitlementConfiguration.entitlementValidation();
+            Log.d(TAG, "Device boot up, clientBehavior = " + clientBehavior);
+            if (clientBehavior == VALID_DURING_VALIDITY
+                    || clientBehavior == VALID_WITHOUT_DURATION
+                    || clientBehavior == NEEDS_TO_RESET) {
+                shouldQuery = true;
+            } else { // NEEDS_TO_RESET_EXCEPT_VERS or NEEDS_TO_RESET_EXCEPT_VERS_UNTIL_SETTING_ON
+                int storedEntitlementVersion = entitlementConfiguration.getEntitlementVersion();
+                int entitlementVersion =
+                        TelephonyUtils.getEntitlementVersion(context, currentSubId);
+                if (storedEntitlementVersion != entitlementVersion && entitlementVersion >= 8) {
+                    shouldQuery = true;
+                }
+            }
         }
 
         if (shouldQuery) {
@@ -151,6 +162,16 @@ public class ImsEntitlementReceiver extends BroadcastReceiver {
                 KEY_LAST_SUB_ID + slotId, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         preferences.edit().putInt(KEY_LAST_SUB_ID + slotId, currentSubId).apply();
         return lastSubId;
+    }
+
+    private boolean isEntitlementVersionSupported(Context context, int currentSubId) {
+        int entitlementVersion = TelephonyUtils.getEntitlementVersion(context, currentSubId);
+        if (entitlementVersion == ENTITLEMENT_VERSION_TWO
+                || entitlementVersion == ENTITLEMENT_VERSION_EIGHT) {
+            return true;
+        }
+        Log.d(TAG, "Unsupported entitltment version: " + entitlementVersion);
+        return false;
     }
 
     /** Returns initialized dependencies */

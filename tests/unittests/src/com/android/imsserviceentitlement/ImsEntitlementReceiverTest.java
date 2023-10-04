@@ -19,6 +19,9 @@ package com.android.imsserviceentitlement;
 import static android.telephony.TelephonyManager.SIM_STATE_LOADED;
 import static android.telephony.TelephonyManager.SIM_STATE_PIN_REQUIRED;
 
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.EntitlementVersion.ENTITLEMENT_VERSION_EIGHT;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.EntitlementVersion.ENTITLEMENT_VERSION_TWO;
+
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.Mockito.never;
@@ -44,6 +47,7 @@ import com.android.imsserviceentitlement.job.JobManager;
 import com.android.imsserviceentitlement.utils.Executors;
 import com.android.imsserviceentitlement.utils.TelephonyUtils;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -59,6 +63,8 @@ import java.lang.reflect.Field;
 public class ImsEntitlementReceiverTest {
     private static final int SUB_ID = 1;
     private static final int LAST_SUB_ID = 2;
+    private static final String KEY_ENTITLEMENT_VERSION_INT =
+            "imsserviceentitlement.entitlement_version_int";
     private static final String RAW_XML =
             "<wap-provisioningdoc version=\"1.1\">\n"
                     + "    <characteristic type=\"APPLICATION\">\n"
@@ -96,6 +102,7 @@ public class ImsEntitlementReceiverTest {
     @Spy private final Context mContext = ApplicationProvider.getApplicationContext();
 
     private ImsEntitlementReceiver mReceiver;
+    private PersistableBundle mCarrierConfig;
     private boolean mIsBootUp;
 
     @Before
@@ -117,23 +124,28 @@ public class ImsEntitlementReceiverTest {
         };
         mIsBootUp = false;
 
-        new EntitlementConfiguration(mContext, LAST_SUB_ID).update(RAW_XML);
+        new EntitlementConfiguration(mContext, LAST_SUB_ID)
+                .update(ENTITLEMENT_VERSION_TWO, RAW_XML);
         new EntitlementConfiguration(mContext, SUB_ID).reset();
 
         when(mMockUserManager.isSystemUser()).thenReturn(true);
         when(mMockTelephonyUtils.getSimApplicationState()).thenReturn(SIM_STATE_LOADED);
 
         setLastSubId(LAST_SUB_ID, 0);
-        setupCarrierConfig();
+        setImsProvisioningBool(true);
         useDirectExecutor();
+    }
+
+    @After
+    public void tearDown() {
+        mCarrierConfig = null;
     }
 
     @Test
     public void onReceive_simChanged_dataReset() {
         mReceiver.onReceive(mContext, getCarrierConfigChangedIntent(SUB_ID, /* slotId= */ 0));
 
-        assertThat(
-                new EntitlementConfiguration(mContext, LAST_SUB_ID).getVoWifiStatus()).isEqualTo(2);
+        assertThat(new EntitlementConfiguration(mContext, LAST_SUB_ID).getRawXml()).isEqualTo(null);
         verify(mMockJobManager, times(1)).queryEntitlementStatusOnceNetworkReady();
     }
 
@@ -145,8 +157,8 @@ public class ImsEntitlementReceiverTest {
         mReceiver.onReceive(mContext, getCarrierConfigChangedIntent(SUB_ID, /* slotId= */ 0));
 
         // no-op
-        assertThat(
-                new EntitlementConfiguration(mContext, LAST_SUB_ID).getVoWifiStatus()).isEqualTo(1);
+        assertThat(new EntitlementConfiguration(mContext, LAST_SUB_ID).getRawXml())
+                .isEqualTo(RAW_XML);
         verify(mMockJobManager, never()).queryEntitlementStatusOnceNetworkReady();
 
         // SIM LOADED
@@ -155,8 +167,7 @@ public class ImsEntitlementReceiverTest {
         mReceiver.onReceive(mContext, getCarrierConfigChangedIntent(SUB_ID, /* slotId= */ 0));
 
         // configuration reset and entitlement query scheduled.
-        assertThat(
-                new EntitlementConfiguration(mContext, LAST_SUB_ID).getVoWifiStatus()).isEqualTo(2);
+        assertThat(new EntitlementConfiguration(mContext, LAST_SUB_ID).getRawXml()).isEqualTo(null);
         verify(mMockJobManager, times(1)).queryEntitlementStatusOnceNetworkReady();
     }
 
@@ -165,8 +176,8 @@ public class ImsEntitlementReceiverTest {
         mReceiver.onReceive(
                 mContext, getCarrierConfigChangedIntent(LAST_SUB_ID, /* slotId= */ 0));
 
-        assertThat(
-                new EntitlementConfiguration(mContext, LAST_SUB_ID).getVoWifiStatus()).isEqualTo(1);
+        assertThat(new EntitlementConfiguration(mContext, LAST_SUB_ID).getRawXml())
+                .isEqualTo(RAW_XML);
         verify(mMockJobManager, never()).queryEntitlementStatusOnceNetworkReady();
     }
 
@@ -177,8 +188,8 @@ public class ImsEntitlementReceiverTest {
         mReceiver.onReceive(
                 mContext, getCarrierConfigChangedIntent(LAST_SUB_ID, /* slotId= */ 1));
 
-        assertThat(
-                new EntitlementConfiguration(mContext, LAST_SUB_ID).getVoWifiStatus()).isEqualTo(1);
+        assertThat(new EntitlementConfiguration(mContext, LAST_SUB_ID).getRawXml())
+                .isEqualTo(RAW_XML);
         verify(mMockJobManager, never()).queryEntitlementStatusOnceNetworkReady();
     }
 
@@ -188,8 +199,7 @@ public class ImsEntitlementReceiverTest {
 
         mReceiver.onReceive(mContext, getCarrierConfigChangedIntent(SUB_ID, /* slotId= */ 1));
 
-        assertThat(
-                new EntitlementConfiguration(mContext, LAST_SUB_ID).getVoWifiStatus()).isEqualTo(2);
+        assertThat(new EntitlementConfiguration(mContext, LAST_SUB_ID).getRawXml()).isEqualTo(null);
         verify(mMockJobManager).queryEntitlementStatusOnceNetworkReady();
     }
 
@@ -213,7 +223,8 @@ public class ImsEntitlementReceiverTest {
 
     @Test
     public void onReceive_deviceBootUp_jobScheduled() {
-        new EntitlementConfiguration(mContext, LAST_SUB_ID).update(RAW_XML_VERSION_0_VALIDITY_0);
+        new EntitlementConfiguration(mContext, LAST_SUB_ID)
+                .update(ENTITLEMENT_VERSION_TWO, RAW_XML_VERSION_0_VALIDITY_0);
         mIsBootUp = true;
 
         mReceiver.onReceive(mContext, getCarrierConfigChangedIntent(LAST_SUB_ID, /* slotId= */ 0));
@@ -223,10 +234,44 @@ public class ImsEntitlementReceiverTest {
 
     @Test
     public void onReceive_bootCompleteInvalidVers_noJobScheduled() {
-        new EntitlementConfiguration(mContext, LAST_SUB_ID).update(RAW_XML_INVALID_VERS);
+        new EntitlementConfiguration(mContext, LAST_SUB_ID)
+                .update(ENTITLEMENT_VERSION_TWO, RAW_XML_INVALID_VERS);
         mIsBootUp = true;
 
         mReceiver.onReceive(mContext, getCarrierConfigChangedIntent(LAST_SUB_ID, /* slotId= */ 0));
+
+        verify(mMockJobManager, never()).queryEntitlementStatusOnceNetworkReady();
+    }
+
+    @Test
+    public void
+            onReceiveAndEntitlementUpdatedFromZeroToTwo_bootCompleteInvalidVers_noJobScheduled() {
+        new EntitlementConfiguration(mContext, LAST_SUB_ID).update(0, RAW_XML_INVALID_VERS);
+        setEntitlementVersion(ENTITLEMENT_VERSION_TWO);
+        mIsBootUp = true;
+
+        mReceiver.onReceive(mContext, getCarrierConfigChangedIntent(LAST_SUB_ID, /* slotId= */ 0));
+
+        verify(mMockJobManager, never()).queryEntitlementStatusOnceNetworkReady();
+    }
+
+    @Test
+    public void
+            onReceiveAndEntitlementUpdatedFromZeroToEight_bootCompleteInvalidVers_JobScheduled() {
+        new EntitlementConfiguration(mContext, LAST_SUB_ID).update(0, RAW_XML_INVALID_VERS);
+        setEntitlementVersion(ENTITLEMENT_VERSION_EIGHT);
+        mIsBootUp = true;
+
+        mReceiver.onReceive(mContext, getCarrierConfigChangedIntent(LAST_SUB_ID, /* slotId= */ 0));
+
+        verify(mMockJobManager).queryEntitlementStatusOnceNetworkReady();
+    }
+
+    @Test
+    public void onReceive_unsupportedEntitlementVersion_noJobScheduled() {
+        setEntitlementVersion(1);
+
+        mReceiver.onReceive(mContext, getCarrierConfigChangedIntent(LAST_SUB_ID, 0));
 
         verify(mMockJobManager, never()).queryEntitlementStatusOnceNetworkReady();
     }
@@ -259,14 +304,25 @@ public class ImsEntitlementReceiverTest {
         return intent;
     }
 
-    private void setupCarrierConfig() {
-        PersistableBundle carrierConfig = new PersistableBundle();
-        carrierConfig.putBoolean(
-                CarrierConfigManager.ImsServiceEntitlement.KEY_IMS_PROVISIONING_BOOL, true);
-        when(mContext.getSystemService(CarrierConfigManager.class))
-                .thenReturn(mCarrierConfigManager);
-        when(mCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(carrierConfig);
-        when(mCarrierConfigManager.getConfigForSubId(LAST_SUB_ID)).thenReturn(carrierConfig);
+    private void setImsProvisioningBool(boolean provisioning) {
+        initializeCarrierConfig();
+        mCarrierConfig.putBoolean(
+                CarrierConfigManager.ImsServiceEntitlement.KEY_IMS_PROVISIONING_BOOL, provisioning);
+    }
+
+    private void setEntitlementVersion(int entitlementVersion) {
+        initializeCarrierConfig();
+        mCarrierConfig.putInt(KEY_ENTITLEMENT_VERSION_INT, entitlementVersion);
+    }
+
+    private void initializeCarrierConfig() {
+        if (mCarrierConfig == null) {
+            mCarrierConfig = new PersistableBundle();
+            when(mCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(mCarrierConfig);
+            when(mCarrierConfigManager.getConfigForSubId(LAST_SUB_ID)).thenReturn(mCarrierConfig);
+            when(mContext.getSystemService(CarrierConfigManager.class))
+                    .thenReturn(mCarrierConfigManager);
+        }
     }
 
     private void setLastSubId(int subId, int slotId) {
