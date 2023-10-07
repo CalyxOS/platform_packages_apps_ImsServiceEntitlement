@@ -31,7 +31,7 @@ android_test {
         "platform-test-annotations",
         "testables",
         "testng",
-        "truth-prebuilt",
+        "truth",
     ],
     test_suites: ["device-tests"],
 }
