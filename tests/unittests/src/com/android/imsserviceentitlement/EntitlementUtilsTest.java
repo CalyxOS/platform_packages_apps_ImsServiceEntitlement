@@ -20,11 +20,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.content.Context;
+
 import androidx.test.runner.AndroidJUnit4;
 
 import com.android.imsserviceentitlement.WfcActivationController.EntitlementResultCallback;
+import com.android.imsserviceentitlement.entitlement.EntitlementConfiguration;
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
 import com.android.imsserviceentitlement.utils.Executors;
+import com.android.libraries.entitlement.ServiceEntitlement;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -35,6 +39,7 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 import java.lang.reflect.Field;
+import java.util.concurrent.CountDownLatch;
 
 @RunWith(AndroidJUnit4.class)
 public class EntitlementUtilsTest {
@@ -42,6 +47,9 @@ public class EntitlementUtilsTest {
     @Mock private ImsEntitlementApi mMockImsEntitlementApi;
     @Mock private EntitlementResultCallback mEntitlementResultCallback;
     @Mock private EntitlementResult mEntitlementResult;
+    @Mock private Context mContext;
+    @Mock private ServiceEntitlement mServiceEntitlement;
+    @Mock private EntitlementConfiguration mEntitlementConfiguration;
 
     @Before
     public void setUp() throws Exception {
@@ -69,10 +77,23 @@ public class EntitlementUtilsTest {
     @Test
     public void entitlementCheck_cancelEntitlementCheck_onFailure() throws Exception {
         useDirectExecutor(false);
-        when(mMockImsEntitlementApi.checkEntitlementStatus()).thenReturn(mEntitlementResult);
+        CountDownLatch entitlementCheckLatch = new CountDownLatch(1);
+        ImsEntitlementApi mockImsEntitlementApi =
+                new ImsEntitlementApi(
+                        mContext, 1, true, mServiceEntitlement, mEntitlementConfiguration) {
+                    @Override
+                    public EntitlementResult checkEntitlementStatus() {
+                        try {
+                            entitlementCheckLatch.await();
+                        } catch (InterruptedException e) {
+                        }
+                        return mEntitlementResult;
+                    }
+                };
 
-        EntitlementUtils.entitlementCheck(mMockImsEntitlementApi, mEntitlementResultCallback);
+        EntitlementUtils.entitlementCheck(mockImsEntitlementApi, mEntitlementResultCallback);
         EntitlementUtils.cancelEntitlementCheck();
+        entitlementCheckLatch.countDown();
 
         verify(mEntitlementResultCallback, never()).onEntitlementResult(mEntitlementResult);
     }
