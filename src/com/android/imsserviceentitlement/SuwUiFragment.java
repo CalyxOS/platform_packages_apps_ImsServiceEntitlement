@@ -98,7 +98,7 @@ public class SuwUiFragment extends Fragment {
                     new FooterButton.Builder(getContext())
                             .setListener(v -> finishActivity(primaryResult))
                             .setText(primaryButtonText)
-                            .setTheme(R.style.SudGlifButton_Primary)
+                            .setTheme(com.google.android.setupdesign.R.style.SudGlifButton_Primary)
                             .build());
         }
 
@@ -107,7 +107,7 @@ public class SuwUiFragment extends Fragment {
                     new FooterButton.Builder(getContext())
                             .setListener(v -> finishActivity(Activity.RESULT_CANCELED))
                             .setText(secondaryButtonText)
-                            .setTheme(R.style.SudGlifButton_Primary)
+                            .setTheme(com.google.android.setupdesign.R.style.SudGlifButton_Primary)
                             .build());
         }
 
