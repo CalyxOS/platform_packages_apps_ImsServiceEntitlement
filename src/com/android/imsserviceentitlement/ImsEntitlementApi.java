@@ -113,6 +113,10 @@ public class ImsEntitlementApi {
                 token -> requestBuilder.setAuthenticationToken(token));
         FcmUtils.fetchFcmToken(mContext, mSubId);
         requestBuilder.setNotificationToken(FcmTokenStore.getToken(mContext, mSubId));
+        // Set fake device info to avoid leaking
+        requestBuilder.setTerminalVendor("vendorX");
+        requestBuilder.setTerminalModel("modelY");
+        requestBuilder.setTerminalSoftwareVersion("versionZ");
         requestBuilder.setAcceptContentType(ServiceEntitlementRequest.ACCEPT_CONTENT_TYPE_XML);
         if (mNeedsImsProvisioning) {
             requestBuilder.setConfigurationVersion(
