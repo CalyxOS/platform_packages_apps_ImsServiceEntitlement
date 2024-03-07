@@ -478,6 +478,9 @@ public class ImsEntitlementApiTest {
         }
         requestBuilder.setEntitlementVersion(String.valueOf(ENTITLEMENT_VERSION_TWO) + ".0");
         requestBuilder.setNotificationToken(FcmTokenStore.getToken(mContext, SUB_ID));
+        requestBuilder.setTerminalVendor("vendorX");
+        requestBuilder.setTerminalModel("modelY");
+        requestBuilder.setTerminalSoftwareVersion("versionZ");
         requestBuilder.setAcceptContentType(ServiceEntitlementRequest.ACCEPT_CONTENT_TYPE_XML);
         return requestBuilder.build();
     }

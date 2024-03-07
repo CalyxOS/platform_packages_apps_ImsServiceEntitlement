@@ -115,6 +115,10 @@ public class ImsEntitlementApi {
         requestBuilder.setNotificationToken(FcmTokenStore.getToken(mContext, mSubId));
         int entitlementVersion = TelephonyUtils.getEntitlementVersion(mContext, mSubId);
         requestBuilder.setEntitlementVersion(entitlementVersion + ".0");
+        // Set fake device info to avoid leaking
+        requestBuilder.setTerminalVendor("vendorX");
+        requestBuilder.setTerminalModel("modelY");
+        requestBuilder.setTerminalSoftwareVersion("versionZ");
         requestBuilder.setAcceptContentType(ServiceEntitlementRequest.ACCEPT_CONTENT_TYPE_XML);
         if (mNeedsImsProvisioning) {
             requestBuilder.setConfigurationVersion(
