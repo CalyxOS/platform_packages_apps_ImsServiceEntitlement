@@ -20,8 +20,8 @@ import static com.google.common.truth.Truth.assertThat;
 
 import androidx.test.runner.AndroidJUnit4;
 
+import com.android.imsserviceentitlement.ts43.Ts43Constants.EntitlementStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.AddrStatus;
-import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.EntitlementStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.ProvStatus;
 import com.android.imsserviceentitlement.ts43.Ts43VowifiStatus.TcStatus;
 

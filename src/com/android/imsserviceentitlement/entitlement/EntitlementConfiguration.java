@@ -18,6 +18,8 @@ package com.android.imsserviceentitlement.entitlement;
 
 import android.content.Context;
 
+import androidx.annotation.VisibleForTesting;
+
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlAttributes;
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlNode;
 import com.android.imsserviceentitlement.utils.XmlDoc;
@@ -34,59 +36,62 @@ public class EntitlementConfiguration {
     private static final long DEFAULT_VALIDITY = 0;
     /** Default value of VoLTE/VoWifi/SMSoverIP entitlemenet status. */
     private static final int INCOMPATIBLE_STATE = 2;
+    /** Default raw XML with both version and validity set to -1. */
+    @VisibleForTesting
+    public static final String RAW_XML_VERS_MINUS_ONE =
+                                "<wap-provisioningdoc version=\"1.1\">"
+                                + "  <characteristic type=\"VERS\">"
+                                + "    <parm name=\"version\" value=\"-1\"/>"
+                                + "    <parm name=\"validity\" value=\"-1\"/>"
+                                + "  </characteristic>"
+                                + "  <characteristic type=\"TOKEN\">"
+                                + "    <parm name=\"token\" value=\"\"/>"
+                                + "    <parm name=\"validity\" value=\"0\"/>"
+                                + "  </characteristic>"
+                                + "</wap-provisioningdoc>";
+    /** Default raw XML with both version and validity set to -2. */
+    @VisibleForTesting
+    public static final String RAW_XML_VERS_MINUS_TWO =
+                                "<wap-provisioningdoc version=\"1.1\">"
+                                + "  <characteristic type=\"VERS\">"
+                                + "    <parm name=\"version\" value=\"-2\"/>"
+                                + "    <parm name=\"validity\" value=\"-2\"/>"
+                                + "  </characteristic>"
+                                + "  <characteristic type=\"TOKEN\">"
+                                + "    <parm name=\"token\" value=\"\"/>"
+                                + "    <parm name=\"validity\" value=\"0\"/>"
+                                + "  </characteristic>"
+                                + "</wap-provisioningdoc>";
 
     private final EntitlementConfigurationsDataStore mConfigurationsDataStore;
-
-    private XmlDoc mXmlDoc = new XmlDoc(null);
+    private XmlDoc mXmlDoc;
 
     public EntitlementConfiguration(Context context, int subId) {
         mConfigurationsDataStore = EntitlementConfigurationsDataStore.getInstance(context, subId);
-        mConfigurationsDataStore.get().ifPresent(rawXml -> mXmlDoc = new XmlDoc(rawXml));
+        mXmlDoc = new XmlDoc(mConfigurationsDataStore.getRawXml().orElse(null));
     }
 
-    /** Update VERS characteristics with given version and validity. */
-    public void update(String rawXml) {
+    // Updates raw XML only.
+    private void update(String rawXml) {
         mConfigurationsDataStore.set(rawXml);
         mXmlDoc = new XmlDoc(rawXml);
     }
 
-    /**
-     * Returns VoLTE entitlement status from the {@link EntitlementConfigurationsDataStore}. If no
-     * data exist then return the default value {@link #INCOMPATIBLE_STATE}.
-     */
-    public int getVolteStatus() {
-        return mXmlDoc.get(
-                ResponseXmlNode.APPLICATION,
-                ResponseXmlAttributes.ENTITLEMENT_STATUS,
-                ServiceEntitlement.APP_VOLTE)
-                .map(Integer::parseInt)
-                .orElse(INCOMPATIBLE_STATE);
+    /** Updates entitlement version and raw XML. */
+    public void update(int version, String rawXml) {
+        mConfigurationsDataStore.set(version, rawXml);
+        mXmlDoc = new XmlDoc(rawXml);
     }
 
-    /**
-     * Returns VoWiFi entitlement status from the {@link EntitlementConfigurationsDataStore}. If no
-     * data exist then return the default value {@link #INCOMPATIBLE_STATE}.
-     */
-    public int getVoWifiStatus() {
-        return mXmlDoc.get(
-                ResponseXmlNode.APPLICATION,
-                ResponseXmlAttributes.ENTITLEMENT_STATUS,
-                ServiceEntitlement.APP_VOWIFI)
-                .map(Integer::parseInt)
-                .orElse(INCOMPATIBLE_STATE);
+    /** Returns the raw XML stored in the {@link EntitlementConfigurationsDataStore}. */
+    @VisibleForTesting
+    public String getRawXml() {
+        return mConfigurationsDataStore.getRawXml().orElse(null);
     }
 
-    /**
-     * Returns SMSoIP entitlement status from the {@link EntitlementConfigurationsDataStore}. If no
-     * data exist then return the default value {@link #INCOMPATIBLE_STATE}.
-     */
-    public int getSmsOverIpStatus() {
-        return mXmlDoc.get(
-                ResponseXmlNode.APPLICATION,
-                ResponseXmlAttributes.ENTITLEMENT_STATUS,
-                ServiceEntitlement.APP_SMSOIP)
-                .map(Integer::parseInt)
-                .orElse(INCOMPATIBLE_STATE);
+    /** Returns the entitlement version stored in the {@link EntitlementConfigurationsDataStore}. */
+    public int getEntitlementVersion() {
+        return  Integer.parseInt(mConfigurationsDataStore.getEntitlementVersion().orElse("0"));
     }
 
     /**
@@ -96,7 +101,7 @@ public class EntitlementConfiguration {
      */
     public Optional<String> getToken() {
         return isTokenInValidityPeriod()
-                ? mXmlDoc.get(ResponseXmlNode.TOKEN, ResponseXmlAttributes.TOKEN, null)
+                ? mXmlDoc.getFromToken(ResponseXmlAttributes.TOKEN)
                 : Optional.empty();
     }
 
@@ -123,10 +128,7 @@ public class EntitlementConfiguration {
      * received by the client. If no data exist then returns default value 0.
      */
     public long getTokenValidity() {
-        return mXmlDoc.get(
-                ResponseXmlNode.TOKEN,
-                ResponseXmlAttributes.VALIDITY,
-                null)
+        return mXmlDoc.getFromToken(ResponseXmlAttributes.VALIDITY)
                 .map(Long::parseLong)
                 .orElse(DEFAULT_VALIDITY);
     }
@@ -136,7 +138,7 @@ public class EntitlementConfiguration {
      * If no data exists then return the default value {@link #DEFAULT_VERSION}.
      */
     public String getVersion() {
-        return mXmlDoc.get(ResponseXmlNode.VERS, ResponseXmlAttributes.VERSION, null)
+        return mXmlDoc.getFromVersion(ResponseXmlAttributes.VERSION)
                 .orElse(String.valueOf(DEFAULT_VERSION));
     }
 
@@ -145,10 +147,7 @@ public class EntitlementConfiguration {
      * received by the client. If no data exist then returns default value 0.
      */
     public long getVersValidity() {
-        return mXmlDoc.get(
-                ResponseXmlNode.VERS,
-                ResponseXmlAttributes.VALIDITY,
-                null)
+        return mXmlDoc.getFromVersion(ResponseXmlAttributes.VALIDITY)
                 .map(Long::parseLong)
                 .orElse(DEFAULT_VALIDITY);
     }
@@ -178,18 +177,8 @@ public class EntitlementConfiguration {
 
     /** Returns {@link ClientBehavior} for the service to be configured. */
     public ClientBehavior entitlementValidation() {
-        int version = mXmlDoc.get(
-                ResponseXmlNode.VERS,
-                ResponseXmlAttributes.VERSION,
-                null)
-                .map(Integer::parseInt)
-                .orElse(DEFAULT_VERSION);
-        long validity = mXmlDoc.get(
-                ResponseXmlNode.VERS,
-                ResponseXmlAttributes.VALIDITY,
-                null)
-                .map(Long::parseLong)
-                .orElse(DEFAULT_VALIDITY);
+        int version = Integer.parseInt(getVersion());
+        long validity = getVersValidity();
 
         if (version > 0 && validity > 0) {
             return ClientBehavior.VALID_DURING_VALIDITY;
@@ -212,8 +201,8 @@ public class EntitlementConfiguration {
      * <ul>
      *   <li>on SIM card change
      *   <li>on menu Factory reset
-     *   <li>if a service is barred by the Service Provider (i.e. configuration version set to 0,
-     *       -1, -2). In that case, version and validity are not reset
+     *   <li>reset by the Service Provider (i.e. configuration version set to 0).
+     *       In that case, version and validity are not reset
      * </ul>
      */
     public void reset() {
@@ -222,37 +211,17 @@ public class EntitlementConfiguration {
         //   - VERS.validity = 0
         //   - TOKEN.token = null (i.e. no value assigned)
         //   - TOKEN.validity =0
-        //   - VoLTE.EntitlementStatus=2 (INCOMPATIBLE_STATE)
-        //   - VoWiFi.EntitlementStatus=2 (INCOMPATIBLE_STATE)
-        //   - SMSoIP.EntitlementStatus=2 (INCOMPATIBLE_STATE)
         update(null);
     }
 
     /** Reverts to the default configurations except the version and validity. */
-    public void resetConfigsExceptVers() {
-        String rawXml =
-                "<wap-provisioningdoc version=\"1.1\">"
-                + "  <characteristic type=\"VERS\">"
-                + "    <parm name=\"version\" value=\"" + getVersion() + "\"/>"
-                + "    <parm name=\"validity\" value=\"" + getVersValidity() + "\"/>"
-                + "  </characteristic>"
-                + "  <characteristic type=\"TOKEN\">"
-                + "    <parm name=\"token\" value=\"\"/>"
-                + "    <parm name=\"validity\" value=\"0\"/>"
-                + "  </characteristic>"
-                + "  <characteristic type=\"APPLICATION\">"
-                + "    <parm name=\"AppID\" value=\"ap2003\"/>"
-                + "    <parm name=\"EntitlementStatus\" value=\"2\"/>"
-                + "  </characteristic>"
-                + "  <characteristic type=\"APPLICATION\">"
-                + "    <parm name=\"AppID\" value=\"ap2004\"/>"
-                + "    <parm name=\"EntitlementStatus\" value=\"2\"/>"
-                + "  </characteristic>"
-                + "  <characteristic type=\"APPLICATION\">"
-                + "    <parm name=\"AppID\" value=\"ap2005\"/>"
-                + "    <parm name=\"EntitlementStatus\" value=\"2\"/>"
-                + "  </characteristic>"
-                + "</wap-provisioningdoc>";
+    public void reset(ClientBehavior clientBehavior) {
+        String rawXml = null;
+        if (clientBehavior == ClientBehavior.NEEDS_TO_RESET_EXCEPT_VERS) {
+            rawXml = RAW_XML_VERS_MINUS_ONE;
+        } else if (clientBehavior == ClientBehavior.NEEDS_TO_RESET_EXCEPT_VERS_UNTIL_SETTING_ON) {
+            rawXml = RAW_XML_VERS_MINUS_TWO;
+        }
         update(rawXml);
     }
 }

@@ -18,6 +18,7 @@ package com.android.imsserviceentitlement;
 
 import static com.android.imsserviceentitlement.entitlement.EntitlementConfiguration.ClientBehavior.NEEDS_TO_RESET;
 import static com.android.imsserviceentitlement.entitlement.EntitlementConfiguration.ClientBehavior.VALID_DURING_VALIDITY;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.EntitlementVersion.ENTITLEMENT_VERSION_TWO;
 import static com.android.libraries.entitlement.ServiceEntitlementException.ERROR_HTTP_STATUS_NOT_SUCCESS;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -45,6 +46,7 @@ import com.android.libraries.entitlement.ServiceEntitlementRequest;
 
 import com.google.common.collect.ImmutableList;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -72,8 +74,13 @@ public class ImsEntitlementApiTest {
     @Mock private EntitlementConfiguration mMockEntitlementConfiguration;
     @Mock private CarrierConfigManager mCarrierConfigManager;
 
+    private PersistableBundle mCarrierConfig;
+
     private static final int SUB_ID = 1;
+    private static final int ENTITLEMENT_VERSION = 2;
     private static final String FCM_TOKEN = "FCM_TOKEN";
+    private static final String KEY_DEFAULT_SERVICE_ENTITLEMENT_STATUS_BOOL =
+            "imsserviceentitlement.default_service_entitlement_status_bool";
     private static final String RAW_XML =
             "<wap-provisioningdoc version=\"1.1\">"
                     + "  <characteristic type=\"VERS\">"
@@ -104,7 +111,6 @@ public class ImsEntitlementApiTest {
                     + "    <parm name=\"EntitlementStatus\" value=\"1\"/>"
                     + "  </characteristic>"
                     + "</wap-provisioningdoc>";
-
     private static final String MULTIPLE_APPIDS_RAW_XML =
             "<wap-provisioningdoc version=\"1.1\">"
                     + "  <characteristic type=\"VERS\">"
@@ -128,6 +134,51 @@ public class ImsEntitlementApiTest {
                     + "    <parm name=\"EntitlementStatus\" value=\"1\"/>"
                     + "  </characteristic>"
                     + "</wap-provisioningdoc>";
+    private static final String RAW_XML_NEED_TO_RESET =
+            "<wap-provisioningdoc version=\"1.1\">"
+                    + "  <characteristic type=\"VERS\">"
+                    + "    <parm name=\"version\" value=\"0\"/>"
+                    + "    <parm name=\"validity\" value=\"0\"/>"
+                    + "  </characteristic>"
+                    + "  <characteristic type=\"TOKEN\">"
+                    + "    <parm name=\"token\" value=\"kZYfCEpSsMr88KZVmab5UsZVzl+nWSsX\"/>"
+                    + "    <parm name=\"validity\" value=\"3600\"/>"
+                    + "  </characteristic>"
+                    + "  <characteristic type=\"APPLICATION\">"
+                    + "    <parm name=\"AppID\" value=\"ap2004\"/>"
+                    + "    <parm name=\"EntitlementStatus\" value=\"1\"/>"
+                    + "  </characteristic>"
+                    + "</wap-provisioningdoc>";
+    private static final String RAW_XML_NEED_TO_RESET_EXCEPT_VERS =
+            "<wap-provisioningdoc version=\"1.1\">"
+                    + "  <characteristic type=\"VERS\">"
+                    + "    <parm name=\"version\" value=\"-1\"/>"
+                    + "    <parm name=\"validity\" value=\"-1\"/>"
+                    + "  </characteristic>"
+                    + "  <characteristic type=\"TOKEN\">"
+                    + "    <parm name=\"token\" value=\"kZYfCEpSsMr88KZVmab5UsZVzl+nWSsX\"/>"
+                    + "    <parm name=\"validity\" value=\"3600\"/>"
+                    + "  </characteristic>"
+                    + "  <characteristic type=\"APPLICATION\">"
+                    + "    <parm name=\"AppID\" value=\"ap2004\"/>"
+                    + "    <parm name=\"EntitlementStatus\" value=\"1\"/>"
+                    + "  </characteristic>"
+                    + "</wap-provisioningdoc>";
+    private static final String RAW_XML_NEED_TO_RESET_EXCEPT_VERS_UNTIL_SETTING_ON =
+            "<wap-provisioningdoc version=\"1.1\">"
+                    + "  <characteristic type=\"VERS\">"
+                    + "    <parm name=\"version\" value=\"-2\"/>"
+                    + "    <parm name=\"validity\" value=\"-2\"/>"
+                    + "  </characteristic>"
+                    + "  <characteristic type=\"TOKEN\">"
+                    + "    <parm name=\"token\" value=\"kZYfCEpSsMr88KZVmab5UsZVzl+nWSsX\"/>"
+                    + "    <parm name=\"validity\" value=\"3600\"/>"
+                    + "  </characteristic>"
+                    + "  <characteristic type=\"APPLICATION\">"
+                    + "    <parm name=\"AppID\" value=\"ap2004\"/>"
+                    + "    <parm name=\"EntitlementStatus\" value=\"1\"/>"
+                    + "  </characteristic>"
+                    + "</wap-provisioningdoc>";
 
     private final EntitlementConfiguration mEntitlementConfiguration =
             new EntitlementConfiguration(ApplicationProvider.getApplicationContext(), SUB_ID);
@@ -137,8 +188,14 @@ public class ImsEntitlementApiTest {
     @Before
     public void setUp() {
         setImsProvisioningBool(true);
+        setDefaultStatus(false);
         FcmTokenStore.setToken(mContext, SUB_ID, FCM_TOKEN);
         mEntitlementConfiguration.reset();
+    }
+
+    @After
+    public void tearDown() {
+        mCarrierConfig = null;
     }
 
     @Test
@@ -171,6 +228,117 @@ public class ImsEntitlementApiTest {
     }
 
     @Test
+    public void checkEntitlementStatus_responseWithVersZero_resetConfiguration() throws Exception {
+        setupImsEntitlementApi(mEntitlementConfiguration);
+        when(mMockServiceEntitlement.queryEntitlementStatus(
+                eq(ImmutableList.of(
+                        ServiceEntitlement.APP_VOWIFI,
+                        ServiceEntitlement.APP_VOLTE,
+                        ServiceEntitlement.APP_SMSOIP)), any())
+        ).thenReturn(RAW_XML_NEED_TO_RESET);
+
+        EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
+
+        assertThat(mEntitlementConfiguration.getRawXml()).isEqualTo(null);
+        verifyDefaultEntitlementResult(result, false);
+    }
+
+    @Test
+    public void checkEntitlementStatus_responseWithVersMinusOne_resetConfiguration()
+            throws Exception {
+        setupImsEntitlementApi(mEntitlementConfiguration);
+        when(mMockServiceEntitlement.queryEntitlementStatus(
+                eq(ImmutableList.of(
+                        ServiceEntitlement.APP_VOWIFI,
+                        ServiceEntitlement.APP_VOLTE,
+                        ServiceEntitlement.APP_SMSOIP)), any())
+        ).thenReturn(RAW_XML_NEED_TO_RESET_EXCEPT_VERS);
+
+        EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
+
+        assertThat(mEntitlementConfiguration.getRawXml())
+                .isEqualTo(EntitlementConfiguration.RAW_XML_VERS_MINUS_ONE);
+        verifyDefaultEntitlementResult(result, false);
+    }
+
+    @Test
+    public void checkEntitlementStatus_responseWithVersMinusTwo_resetConfiguration()
+            throws Exception {
+        setupImsEntitlementApi(mEntitlementConfiguration);
+        when(mMockServiceEntitlement.queryEntitlementStatus(
+                eq(ImmutableList.of(
+                        ServiceEntitlement.APP_VOWIFI,
+                        ServiceEntitlement.APP_VOLTE,
+                        ServiceEntitlement.APP_SMSOIP)), any())
+        ).thenReturn(RAW_XML_NEED_TO_RESET_EXCEPT_VERS_UNTIL_SETTING_ON);
+
+        EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
+
+        assertThat(mEntitlementConfiguration.getRawXml())
+                .isEqualTo(EntitlementConfiguration.RAW_XML_VERS_MINUS_TWO);
+        verifyDefaultEntitlementResult(result, false);
+    }
+
+    @Test
+    public void
+            checkEntitlementStatus_defaultEnabledAndResponseWithVersZero_resetConfiguration()
+                    throws Exception {
+        setDefaultStatus(true);
+        setupImsEntitlementApi(mEntitlementConfiguration);
+        when(mMockServiceEntitlement.queryEntitlementStatus(
+                eq(ImmutableList.of(
+                        ServiceEntitlement.APP_VOWIFI,
+                        ServiceEntitlement.APP_VOLTE,
+                        ServiceEntitlement.APP_SMSOIP)), any())
+        ).thenReturn(RAW_XML_NEED_TO_RESET);
+
+        EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
+
+        assertThat(mEntitlementConfiguration.getRawXml()).isEqualTo(null);
+        verifyDefaultEntitlementResult(result, true);
+    }
+
+    @Test
+    public void
+            checkEntitlementStatus_defaultEnabledAndResponseWithVersMinusOne_resetConfiguration()
+                    throws Exception {
+        setupImsEntitlementApi(mEntitlementConfiguration);
+        setDefaultStatus(true);
+        when(mMockServiceEntitlement.queryEntitlementStatus(
+                eq(ImmutableList.of(
+                        ServiceEntitlement.APP_VOWIFI,
+                        ServiceEntitlement.APP_VOLTE,
+                        ServiceEntitlement.APP_SMSOIP)), any())
+        ).thenReturn(RAW_XML_NEED_TO_RESET_EXCEPT_VERS);
+
+        EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
+
+        assertThat(mEntitlementConfiguration.getRawXml())
+                .isEqualTo(EntitlementConfiguration.RAW_XML_VERS_MINUS_ONE);
+        verifyDefaultEntitlementResult(result, true);
+    }
+
+    @Test
+    public void
+            checkEntitlementStatus_defaultEnabledAndResponseWithVersMinusTwo_resetConfiguration()
+                    throws Exception {
+        setupImsEntitlementApi(mEntitlementConfiguration);
+        setDefaultStatus(true);
+        when(mMockServiceEntitlement.queryEntitlementStatus(
+                eq(ImmutableList.of(
+                        ServiceEntitlement.APP_VOWIFI,
+                        ServiceEntitlement.APP_VOLTE,
+                        ServiceEntitlement.APP_SMSOIP)), any())
+        ).thenReturn(RAW_XML_NEED_TO_RESET_EXCEPT_VERS_UNTIL_SETTING_ON);
+
+        EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
+
+        assertThat(mEntitlementConfiguration.getRawXml())
+                .isEqualTo(EntitlementConfiguration.RAW_XML_VERS_MINUS_TWO);
+        verifyDefaultEntitlementResult(result, true);
+    }
+
+    @Test
     public void checkEntitlementStatus_verifyConfigs() throws Exception {
         setImsProvisioningBool(false);
         setupImsEntitlementApi(mEntitlementConfiguration);
@@ -180,9 +348,7 @@ public class ImsEntitlementApiTest {
 
         EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
 
-        assertThat(mEntitlementConfiguration.getVoWifiStatus()).isEqualTo(1);
-        assertThat(mEntitlementConfiguration.getVolteStatus()).isEqualTo(2);
-        assertThat(mEntitlementConfiguration.getSmsOverIpStatus()).isEqualTo(2);
+        assertThat(mEntitlementConfiguration.getRawXml()).isEqualTo(RAW_XML);
         assertThat(mEntitlementConfiguration.getToken().get()).isEqualTo(
                 "kZYfCEpSsMr88KZVmab5UsZVzl+nWSsX");
         assertThat(mEntitlementConfiguration.getTokenValidity()).isEqualTo(3600);
@@ -200,9 +366,7 @@ public class ImsEntitlementApiTest {
         EntitlementResult result = mImsEntitlementApi.checkEntitlementStatus();
 
         assertThat(result.getVowifiStatus().vowifiEntitled()).isFalse();
-        assertThat(mEntitlementConfiguration.getVoWifiStatus()).isEqualTo(2);
-        assertThat(mEntitlementConfiguration.getVolteStatus()).isEqualTo(2);
-        assertThat(mEntitlementConfiguration.getSmsOverIpStatus()).isEqualTo(2);
+        assertThat(mEntitlementConfiguration.getRawXml()).isEqualTo(null);
         assertThat(mEntitlementConfiguration.getToken().isPresent()).isFalse();
         assertThat(mEntitlementConfiguration.getTokenValidity()).isEqualTo(0);
         assertThat(mEntitlementConfiguration.entitlementValidation()).isEqualTo(NEEDS_TO_RESET);
@@ -228,7 +392,7 @@ public class ImsEntitlementApiTest {
     public void checkEntitlementStatus_httpResponse511_fullAuthnDone() throws Exception {
         setImsProvisioningBool(false);
         setupImsEntitlementApi(mEntitlementConfiguration);
-        mEntitlementConfiguration.update(RAW_XML);
+        mEntitlementConfiguration.update(ENTITLEMENT_VERSION, RAW_XML);
         // While perform fast-authn, throws exception with code 511
         when(mMockServiceEntitlement.queryEntitlementStatus(
                 ImmutableList.of(ServiceEntitlement.APP_VOWIFI),
@@ -253,7 +417,7 @@ public class ImsEntitlementApiTest {
             throws Exception {
         setImsProvisioningBool(false);
         setupImsEntitlementApi(mEntitlementConfiguration);
-        mEntitlementConfiguration.update(RAW_XML);
+        mEntitlementConfiguration.update(ENTITLEMENT_VERSION, RAW_XML);
         Clock fixedClock = Clock.fixed(Instant.ofEpochSecond(0), ZoneOffset.UTC);
         ImsEntitlementApi.sClock = fixedClock;
 
@@ -279,7 +443,7 @@ public class ImsEntitlementApiTest {
             throws Exception {
         setImsProvisioningBool(false);
         setupImsEntitlementApi(mEntitlementConfiguration);
-        mEntitlementConfiguration.update(RAW_XML);
+        mEntitlementConfiguration.update(ENTITLEMENT_VERSION, RAW_XML);
         // While perform fast-authn, throws exception with code 503
         when(mMockServiceEntitlement.queryEntitlementStatus(
                 ImmutableList.of(ServiceEntitlement.APP_VOWIFI),
@@ -312,6 +476,7 @@ public class ImsEntitlementApiTest {
         if (token != null) {
             requestBuilder.setAuthenticationToken(token);
         }
+        requestBuilder.setEntitlementVersion(String.valueOf(ENTITLEMENT_VERSION_TWO));
         requestBuilder.setNotificationToken(FcmTokenStore.getToken(mContext, SUB_ID));
         requestBuilder.setAcceptContentType(ServiceEntitlementRequest.ACCEPT_CONTENT_TYPE_XML);
         return requestBuilder.build();
@@ -327,14 +492,24 @@ public class ImsEntitlementApiTest {
     }
 
     private void setImsProvisioningBool(boolean provisioning) {
-        PersistableBundle carrierConfig = new PersistableBundle();
-        carrierConfig.putBoolean(
-                CarrierConfigManager.ImsServiceEntitlement.KEY_IMS_PROVISIONING_BOOL,
-                provisioning
-        );
-        when(mCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(carrierConfig);
-        when(mContext.getSystemService(CarrierConfigManager.class))
-                .thenReturn(mCarrierConfigManager);
+        initializeCarrierConfig();
+        mCarrierConfig.putBoolean(
+                CarrierConfigManager.ImsServiceEntitlement.KEY_IMS_PROVISIONING_BOOL, provisioning);
+    }
+
+    private void setDefaultStatus(Boolean defaultStatus) {
+        initializeCarrierConfig();
+        mCarrierConfig.putBoolean(
+                KEY_DEFAULT_SERVICE_ENTITLEMENT_STATUS_BOOL, defaultStatus);
+    }
+
+    private void initializeCarrierConfig() {
+        if (mCarrierConfig == null) {
+            mCarrierConfig = new PersistableBundle();
+            when(mCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(mCarrierConfig);
+            when(mContext.getSystemService(CarrierConfigManager.class))
+                    .thenReturn(mCarrierConfigManager);
+        }
     }
 
     private String getDateTimeAfter(long seconds, Clock fixedClock) {
@@ -342,5 +517,15 @@ public class ImsEntitlementApiTest {
                 "EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
         return dateFormat.format(Date.from(fixedClock.instant().plusSeconds(seconds)));
+    }
+
+    private void verifyDefaultEntitlementResult(EntitlementResult result, boolean isActive) {
+        assertThat(result.getVowifiStatus().vowifiEntitled()).isEqualTo(isActive);
+        assertThat(result.getVowifiStatus().serverDataMissing()).isEqualTo(false);
+        assertThat(result.getVowifiStatus().inProgress()).isEqualTo(false);
+        assertThat(result.getVolteStatus().isActive()).isEqualTo(isActive);
+        assertThat(result.getVonrStatus().isHomeActive()).isEqualTo(isActive);
+        assertThat(result.getVonrStatus().isRoamingActive()).isEqualTo(isActive);
+        assertThat(result.getSmsoveripStatus().isActive()).isEqualTo(isActive);
     }
 }

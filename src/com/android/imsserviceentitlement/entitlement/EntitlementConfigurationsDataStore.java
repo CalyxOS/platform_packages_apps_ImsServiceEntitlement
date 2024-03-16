@@ -26,6 +26,7 @@ class EntitlementConfigurationsDataStore {
     private static final String PREFERENCE_ENTITLEMENT_CHARACTERISTICS =
             "ENTITLEMENT_CHARACTERISTICS";
     private static final String XML_DOCUMENT = "XML_DOCUMENT";
+    private static final String ENTITLEMENT_VERSION = "ENTITLEMENT_VERSION";
     private static final String QUERY_TIME_MILLIS = "QUERY_TIME_MILLIS";
 
     private final SharedPreferences mPreferences;
@@ -46,6 +47,15 @@ class EntitlementConfigurationsDataStore {
                 Context.MODE_PRIVATE);
     }
 
+    public void set(int entitlementVersion, String characteristics) {
+        mPreferences
+                .edit()
+                .putString(XML_DOCUMENT, characteristics)
+                .putString(ENTITLEMENT_VERSION, String.valueOf(entitlementVersion))
+                .putLong(QUERY_TIME_MILLIS, System.currentTimeMillis())
+                .apply();
+    }
+
     public void set(String characteristics) {
         mPreferences
                 .edit()
@@ -54,11 +64,15 @@ class EntitlementConfigurationsDataStore {
                 .apply();
     }
 
-    public Optional<String> get() {
+    public Optional<String> getRawXml() {
         return Optional.ofNullable(mPreferences.getString(XML_DOCUMENT, null));
     }
 
     public long getQueryTimeMillis() {
         return mPreferences.getLong(QUERY_TIME_MILLIS, 0);
+    }
+
+    public Optional<String> getEntitlementVersion() {
+        return Optional.ofNullable(mPreferences.getString(ENTITLEMENT_VERSION, null));
     }
 }

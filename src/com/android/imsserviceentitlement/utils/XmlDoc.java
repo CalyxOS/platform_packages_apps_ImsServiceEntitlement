@@ -16,16 +16,25 @@
 
 package com.android.imsserviceentitlement.utils;
 
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.AccessTypeValue.LTE;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.AccessTypeValue.NGRAN;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.HomeRoamingNwTypeValue.ALL;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.HomeRoamingNwTypeValue.HOME;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.HomeRoamingNwTypeValue.ROAMING;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlAttributes.ACCESS_TYPE;
 import static com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlAttributes.APP_ID;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlAttributes.HOME_ROAMING_NW_TYPE;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlAttributes.RAT_VOICE_ENTITLE_INFO_DETAILS;
 import static com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlNode.APPLICATION;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlNode.TOKEN;
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlNode.VERS;
 
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.Log;
 
-import androidx.annotation.Nullable;
-
 import com.android.imsserviceentitlement.debug.DebugUtils;
+import com.android.libraries.entitlement.ServiceEntitlement;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -59,14 +68,43 @@ public class XmlDoc {
         parseXmlResponse(responseBody);
     }
 
-    /** Returns param value for given node and key. */
-    public Optional<String> get(String node, String key, @Nullable String appId) {
-        Map<String, String> paramsMap = mNodesMap.get(combineKeyWithAppId(node, appId));
+    public Optional<String> getFromToken(String key) {
+        Map<String, String> paramsMap = mNodesMap.get(TOKEN);
         return Optional.ofNullable(paramsMap == null ? null : paramsMap.get(key));
     }
 
-    private String combineKeyWithAppId(String node, @Nullable String appId) {
-        return APPLICATION.equals(node) && !TextUtils.isEmpty(appId) ? node + "_" + appId : node;
+    public Optional<String> getFromVersion(String key) {
+        Map<String, String> paramsMap = mNodesMap.get(VERS);
+        return Optional.ofNullable(paramsMap == null ? null : paramsMap.get(key));
+    }
+
+    public Optional<String> getFromVowifi(String key) {
+        Map<String, String> paramsMap = mNodesMap.get(ServiceEntitlement.APP_VOWIFI);
+        return Optional.ofNullable(paramsMap == null ? null : paramsMap.get(key));
+    }
+
+    public Optional<String> getFromVolte(String key) {
+        Map<String, String> paramsMap = mNodesMap.get(ServiceEntitlement.APP_VOLTE);
+        paramsMap = paramsMap == null ? mNodesMap.get(LTE + ALL) : paramsMap;
+        paramsMap = paramsMap == null ? mNodesMap.get(LTE + HOME) : paramsMap;
+        return Optional.ofNullable(paramsMap == null ? null : paramsMap.get(key));
+    }
+
+    public Optional<String> getFromSmsoverip(String key) {
+        Map<String, String> paramsMap = mNodesMap.get(ServiceEntitlement.APP_SMSOIP);
+        return Optional.ofNullable(paramsMap == null ? null : paramsMap.get(key));
+    }
+
+    public Optional<String> getFromVonrHome(String key) {
+        Map<String, String> paramsMap = mNodesMap.get(NGRAN + ALL);
+        paramsMap = paramsMap == null ? mNodesMap.get(NGRAN + HOME) : paramsMap;
+        return Optional.ofNullable(paramsMap == null ? null : paramsMap.get(key));
+    }
+
+    public Optional<String> getFromVonrRoaming(String key) {
+        Map<String, String> paramsMap = mNodesMap.get(NGRAN + ALL);
+        paramsMap = paramsMap == null ? mNodesMap.get(NGRAN + ROAMING) : paramsMap;
+        return Optional.ofNullable(paramsMap == null ? null : paramsMap.get(key));
     }
 
     /**
@@ -78,6 +116,9 @@ public class XmlDoc {
             return;
         }
 
+        if (DebugUtils.isPiiLoggable()) {
+            Log.d(TAG, "Raw Response Body: " + responseBody);
+        }
         // Workaround: some server doesn't escape "&" in XML response and that will cause XML parser
         // failure later.
         // This is a quick impl of escaping w/o intorducing a ton of new dependencies.
@@ -108,12 +149,23 @@ public class XmlDoc {
                                     + " node value="
                                     + map.item(0).getNodeValue());
                 }
-                Map<String, String> paramsMap = new ArrayMap<>();
                 Element element = (Element) nodeList.item(i);
+                if (element.getElementsByTagName(NODE_CHARACTERISTIC).getLength() != 0) {
+                    continue;
+                }
+
+                Map<String, String> paramsMap = new ArrayMap<>();
+                String characteristicType = map.item(0).getNodeValue();
+                String key;
                 paramsMap.putAll(parseParams(element.getElementsByTagName(NODE_PARM)));
-                mNodesMap.put(
-                        combineKeyWithAppId(map.item(0).getNodeValue(), paramsMap.get(APP_ID)),
-                        paramsMap);
+                if (APPLICATION.equals(characteristicType)) {
+                    key = paramsMap.get(APP_ID);
+                } else if (RAT_VOICE_ENTITLE_INFO_DETAILS.equals(characteristicType)) {
+                    key = paramsMap.get(ACCESS_TYPE) + paramsMap.get(HOME_ROAMING_NW_TYPE);
+                } else { // VERS or TOKEN
+                    key = characteristicType;
+                }
+                mNodesMap.put(key, paramsMap);
             }
         } catch (ParserConfigurationException | IOException | SAXException e) {
             Log.e(TAG, "Failed to parse XML node. " + e);

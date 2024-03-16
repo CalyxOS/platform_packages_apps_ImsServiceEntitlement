@@ -16,6 +16,9 @@
 
 package com.android.imsserviceentitlement.utils;
 
+import static android.telephony.ims.feature.MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NR;
+
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.PersistableBundle;
@@ -128,6 +131,11 @@ public class ImsUtils {
         }
     }
 
+    /** Sets whether Vonr is provisioned. */
+    public void setVonrProvisioned(boolean value) {
+        setProvisioningIntValue(CAPABILITY_TYPE_VOICE, REGISTRATION_TECH_NR, value);
+    }
+
     /** Sets whether SMSoIP is provisioned. */
     public void setSmsoipProvisioned(boolean value) {
         try {
@@ -135,6 +143,15 @@ public class ImsUtils {
                     KEY_SMS_OVER_IP_ENABLED, value
                             ? ProvisioningManager.PROVISIONING_VALUE_ENABLED
                             : ProvisioningManager.PROVISIONING_VALUE_DISABLED);
+        } catch (RuntimeException e) {
+            // ignore this exception, possible exception should be NullPointerException or
+            // RemoteException.
+        }
+    }
+
+    private void setProvisioningIntValue(int capability, int tech, boolean provisioned) {
+        try {
+            mProvisioningManager.setProvisioningStatusForCapability(capability, tech, provisioned);
         } catch (RuntimeException e) {
             // ignore this exception, possible exception should be NullPointerException or
             // RemoteException.

@@ -88,6 +88,7 @@ public class EntitlementConfigurationTest {
                     + "    </characteristic>\n"
                     + "</wap-provisioningdoc>\n";
     private static final int SUB_ID = 1;
+    private static final int ENTITLEMENT_VERSION = 2;
 
     private Context mContext;
     private EntitlementConfiguration mConfiguration;
@@ -101,11 +102,10 @@ public class EntitlementConfigurationTest {
 
     @Test
     public void updateConfigurations_verifyConfigs() {
-        mConfiguration.update(RAW_XML);
+        mConfiguration.update(ENTITLEMENT_VERSION, RAW_XML);
 
-        assertThat(mConfiguration.getVolteStatus()).isEqualTo(0);
-        assertThat(mConfiguration.getVoWifiStatus()).isEqualTo(1);
-        assertThat(mConfiguration.getSmsOverIpStatus()).isEqualTo(2);
+        assertThat(mConfiguration.getEntitlementVersion()).isEqualTo(ENTITLEMENT_VERSION);
+        assertThat(mConfiguration.getRawXml()).isEqualTo(RAW_XML);
         assertThat(mConfiguration.getToken().get()).isEqualTo("kZYfCEpSsMr88KZVmab5UsZVzl+nWSsX");
         assertThat(mConfiguration.getTokenValidity()).isEqualTo(3600);
         assertThat(mConfiguration.getVersion()).isEqualTo("1");
@@ -115,12 +115,11 @@ public class EntitlementConfigurationTest {
 
     @Test
     public void updateConfigurations_reset_verifyDefaultValues() {
-        mConfiguration.update(RAW_XML);
+        mConfiguration.update(ENTITLEMENT_VERSION, RAW_XML);
         mConfiguration.reset();
 
-        assertThat(mConfiguration.getVolteStatus()).isEqualTo(2);
-        assertThat(mConfiguration.getVoWifiStatus()).isEqualTo(2);
-        assertThat(mConfiguration.getSmsOverIpStatus()).isEqualTo(2);
+        assertThat(mConfiguration.getEntitlementVersion()).isEqualTo(ENTITLEMENT_VERSION);
+        assertThat(mConfiguration.getRawXml()).isEqualTo(null);
         assertThat(mConfiguration.getToken().isPresent()).isFalse();
         assertThat(mConfiguration.getTokenValidity()).isEqualTo(0);
         assertThat(mConfiguration.entitlementValidation()).isEqualTo(ClientBehavior.NEEDS_TO_RESET);
@@ -128,16 +127,18 @@ public class EntitlementConfigurationTest {
 
     @Test
     public void updateConfigurations_noTokenValidity_tokenValid() {
-        mConfiguration.update(RAW_XML_NO_TOKEN_VALIDITY);
+        mConfiguration.update(ENTITLEMENT_VERSION, RAW_XML_NO_TOKEN_VALIDITY);
 
+        assertThat(mConfiguration.getEntitlementVersion()).isEqualTo(ENTITLEMENT_VERSION);
         assertThat(mConfiguration.getToken().get()).isEqualTo("kZYfCEpSsMr88KZVmab5UsZVzl+nWSsX");
         assertThat(mConfiguration.getTokenValidity()).isEqualTo(0);
     }
 
     @Test
     public void updateConfigurations_noVersVersion_getDefaultValue() {
-        mConfiguration.update(RAW_XML_NO_VERS_VERSION);
+        mConfiguration.update(ENTITLEMENT_VERSION, RAW_XML_NO_VERS_VERSION);
 
+        assertThat(mConfiguration.getEntitlementVersion()).isEqualTo(ENTITLEMENT_VERSION);
         assertThat(mConfiguration.getVersion()).isEqualTo("0");
     }
 }

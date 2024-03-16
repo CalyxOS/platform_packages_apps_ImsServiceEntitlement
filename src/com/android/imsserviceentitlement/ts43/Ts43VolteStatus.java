@@ -16,10 +16,9 @@
 
 package com.android.imsserviceentitlement.ts43;
 
+import com.android.imsserviceentitlement.ts43.Ts43Constants.EntitlementStatus;
 import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlAttributes;
-import com.android.imsserviceentitlement.ts43.Ts43Constants.ResponseXmlNode;
 import com.android.imsserviceentitlement.utils.XmlDoc;
-import com.android.libraries.entitlement.ServiceEntitlement;
 
 import com.google.auto.value.AutoValue;
 
@@ -29,16 +28,6 @@ import com.google.auto.value.AutoValue;
  */
 @AutoValue
 public abstract class Ts43VolteStatus {
-    /** The entitlement status of Volte service. */
-    public static class EntitlementStatus {
-        public EntitlementStatus() {}
-
-        public static final int DISABLED = 0;
-        public static final int ENABLED = 1;
-        public static final int INCOMPATIBLE = 2;
-        public static final int PROVISIONING = 3;
-    }
-
     /** The entitlement status of Volte service. */
     public abstract int entitlementStatus();
 
@@ -50,9 +39,7 @@ public abstract class Ts43VolteStatus {
     public static Ts43VolteStatus.Builder builder(XmlDoc doc) {
         return builder()
                 .setEntitlementStatus(
-                        doc.get(ResponseXmlNode.APPLICATION,
-                                ResponseXmlAttributes.ENTITLEMENT_STATUS,
-                                ServiceEntitlement.APP_VOLTE)
+                        doc.getFromVolte(ResponseXmlAttributes.ENTITLEMENT_STATUS)
                                 .map(status -> Integer.parseInt(status))
                                 .orElse(EntitlementStatus.INCOMPATIBLE));
     }

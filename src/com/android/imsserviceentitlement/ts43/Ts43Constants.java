@@ -56,5 +56,63 @@ public final class Ts43Constants {
         public static final String VERSION = "version";
         /** XML attribute name of validity. */
         public static final String VALIDITY = "validity";
+        /** XML attribute name of RATVoiceEntitleInfoDetails. */
+        public static final String RAT_VOICE_ENTITLE_INFO_DETAILS = "RATVoiceEntitleInfoDetails";
+        /** XML attribute name of AccessType in TS43 v8 section 4.1.1. */
+        public static final String ACCESS_TYPE = "AccessType";
+        /** XML attribute name of HomeRoamingNWType in TS43 v8 section 4.1.1. */
+        public static final String HOME_ROAMING_NW_TYPE = "HomeRoamingNWType";
+        /** XML attribute name of NetworkVoiceIRatCapability in TS43 v8 section 4.1.1. */
+        public static final String NETWORK_VOICE_IRAT_CAPABILITY = "NetworkVoiceIRatCapability";
+    }
+
+    /** Value of EntitlementStatus. */
+    public static final class EntitlementStatus {
+        private EntitlementStatus() {}
+
+        /** The service allowed, but not yet provisioned and activated on the network side. */
+        public static final int DISABLED = 0;
+        /** The service allowed, provisioned and activated on the network side. */
+        public static final int ENABLED = 1;
+        /** The service cannot be offered. */
+        public static final int INCOMPATIBLE = 2;
+        /** The service being provisioned on the network side. */
+        public static final int PROVISIONING = 3;
+    }
+
+    /** Value of AccessType. */
+    public static final class AccessTypeValue {
+        private AccessTypeValue() {}
+
+        /** RAT of type LTE (4G). */
+        public static final String LTE = "1";
+
+        /** RAT of type NG-RAN (5G). */
+        public static final String NGRAN = "2";
+    }
+
+    /** Value of HomeRoamingNWTypeValue. */
+    public static final class HomeRoamingNwTypeValue {
+        private HomeRoamingNwTypeValue() {}
+
+        /** Include both home and roaming networks. */
+        public static final String ALL = "1";
+
+        /** Home network type. */
+        public static final String HOME = "2";
+
+        /** Roaming network type. */
+        public static final String ROAMING = "3";
+    }
+
+    /** Value of entitlement_version parameters */
+    public static final class EntitlementVersion {
+        private EntitlementVersion() {}
+
+        /** Version 2.0. */
+        public static final int ENTITLEMENT_VERSION_TWO = 2;
+
+        /** Version 8.0. */
+        public static final int ENTITLEMENT_VERSION_EIGHT = 8;
     }
 }

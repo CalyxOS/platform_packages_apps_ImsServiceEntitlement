@@ -16,6 +16,8 @@
 
 package com.android.imsserviceentitlement.utils;
 
+import static com.android.imsserviceentitlement.ts43.Ts43Constants.EntitlementVersion.ENTITLEMENT_VERSION_TWO;
+
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -33,6 +35,11 @@ import java.util.List;
 /** This class implements Telephony helper methods. */
 public class TelephonyUtils {
     public static final String TAG = "IMSSE-TelephonyUtils";
+    // TODO(b/326358344) : API review for hide carrier configurations
+    private static final String KEY_ENTITLEMENT_VERSION_INT =
+            "imsserviceentitlement.entitlement_version_int";
+    private static final String KEY_DEFAULT_SERVICE_ENTITLEMENT_STATUS_BOOL =
+            "imsserviceentitlement.default_service_entitlement_status_bool";
 
     private final ConnectivityManager mConnectivityManager;
     private final TelephonyManager mTelephonyManager;
@@ -144,12 +151,34 @@ public class TelephonyUtils {
     }
 
     /**
-     * Returns true if app needs to do IMS (VoLTE/VoWiFi/SMSoIP) provisioning in the background
+     * Returns true if app needs to do IMS (VoLTE/VoNR/VoWiFi/SMSoIP) provisioning in the background
      * or false if it doesn't need to do.
      */
     public static boolean isImsProvisioningRequired(Context context, int subId) {
         return getConfigForSubId(context, subId).getBoolean(
                 CarrierConfigManager.ImsServiceEntitlement.KEY_IMS_PROVISIONING_BOOL,
+                false
+        );
+    }
+
+    /**
+     * Returns entitlement version for the {@code subId} or {@link
+     * Ts43Constants.ENTITLEMENT_VERSION_TWO} if it is not available.
+     */
+    public static int getEntitlementVersion(Context context, int subId) {
+        return getConfigForSubId(context, subId).getInt(
+                KEY_ENTITLEMENT_VERSION_INT,
+                ENTITLEMENT_VERSION_TWO
+        );
+    }
+
+    /**
+     * Returns default service entitlement status for the {@code subId} or false if it is not
+     * available.
+     */
+    public static boolean getDefaultStatus(Context context, int subId) {
+        return getConfigForSubId(context, subId).getBoolean(
+                KEY_DEFAULT_SERVICE_ENTITLEMENT_STATUS_BOOL,
                 false
         );
     }
