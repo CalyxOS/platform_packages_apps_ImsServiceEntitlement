@@ -114,7 +114,7 @@ public class ImsEntitlementApi {
         FcmUtils.fetchFcmToken(mContext, mSubId);
         requestBuilder.setNotificationToken(FcmTokenStore.getToken(mContext, mSubId));
         int entitlementVersion = TelephonyUtils.getEntitlementVersion(mContext, mSubId);
-        requestBuilder.setEntitlementVersion(String.valueOf(entitlementVersion));
+        requestBuilder.setEntitlementVersion(entitlementVersion + ".0");
         requestBuilder.setAcceptContentType(ServiceEntitlementRequest.ACCEPT_CONTENT_TYPE_XML);
         if (mNeedsImsProvisioning) {
             requestBuilder.setConfigurationVersion(

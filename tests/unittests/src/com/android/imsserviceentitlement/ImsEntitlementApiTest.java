@@ -476,7 +476,7 @@ public class ImsEntitlementApiTest {
         if (token != null) {
             requestBuilder.setAuthenticationToken(token);
         }
-        requestBuilder.setEntitlementVersion(String.valueOf(ENTITLEMENT_VERSION_TWO));
+        requestBuilder.setEntitlementVersion(String.valueOf(ENTITLEMENT_VERSION_TWO) + ".0");
         requestBuilder.setNotificationToken(FcmTokenStore.getToken(mContext, SUB_ID));
         requestBuilder.setAcceptContentType(ServiceEntitlementRequest.ACCEPT_CONTENT_TYPE_XML);
         return requestBuilder.build();
