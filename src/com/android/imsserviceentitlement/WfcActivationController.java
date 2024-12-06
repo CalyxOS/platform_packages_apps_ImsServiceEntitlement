@@ -69,6 +69,7 @@ public class WfcActivationController {
     private final ImsUtils mImsUtils;
     private final Intent mStartIntent;
     private final MetricsLogger mMetricsLogger;
+    private final Context mContext;
 
     // States
     private int mEvaluateTimes = 0;
@@ -80,6 +81,7 @@ public class WfcActivationController {
             WfcActivationUi wfcActivationUi,
             ImsEntitlementApi imsEntitlementApi,
             Intent intent) {
+        this.mContext = context;
         this.mStartIntent = intent;
         this.mActivationUi = wfcActivationUi;
         this.mImsEntitlementApi = imsEntitlementApi;
@@ -96,6 +98,7 @@ public class WfcActivationController {
             Intent intent,
             ImsUtils imsUtils,
             MetricsLogger metricsLogger) {
+        this.mContext = context;
         this.mStartIntent = intent;
         this.mActivationUi = wfcActivationUi;
         this.mImsEntitlementApi = imsEntitlementApi;
@@ -154,6 +157,9 @@ public class WfcActivationController {
     public void finish() {
         EntitlementUtils.cancelEntitlementCheck();
 
+        if (isSkipWfcActivation() && isActivationFlow()) {
+            return;
+        }
         // If no result set, it must be cancelled by user pressing back button.
         if (mAppResult == IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNKNOWN_RESULT) {
             mAppResult = IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__CANCELED;
@@ -327,6 +333,10 @@ public class WfcActivationController {
 
     private long getEntitlementStatusUpdateRetryIntervalMs() {
         return ENTITLEMENT_STATUS_UPDATE_RETRY_INTERVAL_MS;
+    }
+
+    public boolean isSkipWfcActivation() {
+        return TelephonyUtils.isSkipWfcActivation(mContext, getSubId());
     }
 
     @MainThread

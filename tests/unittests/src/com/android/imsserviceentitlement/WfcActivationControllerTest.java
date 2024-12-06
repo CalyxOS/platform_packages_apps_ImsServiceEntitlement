@@ -22,8 +22,10 @@ import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IM
 import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IMS_SERVICE_ENTITLEMENT_UPDATED__SERVICE_TYPE__VOWIFI;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,6 +35,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
@@ -70,23 +74,30 @@ public class WfcActivationControllerTest {
     @Mock private NetworkInfo mMockNetworkInfo;
     @Mock private ImsUtils mMockImsUtils;
     @Mock private MetricsLogger mMockMetricsLogger;
+    @Mock private CarrierConfigManager mMockCarrierConfigManager;
 
     private static final int SUB_ID = 1;
     private static final int CARRIER_ID = 1234;
     private static final String EMERGENCY_ADDRESS_WEB_URL = "webUrl";
     private static final String EMERGENCY_ADDRESS_WEB_DATA = "webData";
+    private static final String KEY_SKIP_WFC_ACTIVATION_BOOL =
+            "imsserviceentitlement.skip_wfc_activation_bool";
 
     private WfcActivationController mWfcActivationController;
     private Context mContext;
+    private PersistableBundle mCarrierConfig;
 
     @Before
     public void setUp() throws Exception {
         mContext = spy(ApplicationProvider.getApplicationContext());
 
+        when(mContext.getSystemService(CarrierConfigManager.class))
+                .thenReturn(mMockCarrierConfigManager);
         when(mContext.getSystemService(TelephonyManager.class)).thenReturn(mMockTelephonyManager);
         when(mMockTelephonyManager.createForSubscriptionId(SUB_ID)).thenReturn(
                 mMockTelephonyManager);
         setNetworkConnected(true);
+        setIsSkipWfcActivation(false);
 
         Field field = Executors.class.getDeclaredField("sUseDirectExecutorForTest");
         field.setAccessible(true);
@@ -133,6 +144,68 @@ public class WfcActivationControllerTest {
                 mOrderVerifier,
                 R.string.tos_title,
                 R.string.show_terms_and_condition_error);
+    }
+
+    @Test
+    public void finish_launchAppForActivateWithIsSkipWfcActivationTrue_notWriteMetrics() {
+        setIsSkipWfcActivation(true);
+        Intent startIntent = new Intent(Intent.ACTION_MAIN);
+        startIntent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, SUB_ID);
+        startIntent.putExtra(
+                ActivityConstants.EXTRA_LAUNCH_CARRIER_APP, ActivityConstants.LAUNCH_APP_ACTIVATE);
+        mWfcActivationController =
+                new WfcActivationController(
+                        mContext,
+                        mMockActivationUi,
+                        mMockActivationApi,
+                        startIntent,
+                        mMockImsUtils,
+                        mMockMetricsLogger);
+
+        mWfcActivationController.finish();
+
+        verify(mMockMetricsLogger, never()).write(anyInt(), anyInt());
+    }
+
+    @Test
+    public void finish_launchAppForUpdateWithIsSkipWfcActivationTrue_writeMetrics() {
+        setIsSkipWfcActivation(true);
+        Intent startIntent = new Intent(Intent.ACTION_MAIN);
+        startIntent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, SUB_ID);
+        startIntent.putExtra(
+                ActivityConstants.EXTRA_LAUNCH_CARRIER_APP, ActivityConstants.LAUNCH_APP_UPDATE);
+        mWfcActivationController =
+                new WfcActivationController(
+                        mContext,
+                        mMockActivationUi,
+                        mMockActivationApi,
+                        startIntent,
+                        mMockImsUtils,
+                        mMockMetricsLogger);
+
+        mWfcActivationController.finish();
+
+        verify(mMockMetricsLogger).write(anyInt(), anyInt());
+    }
+
+    @Test
+    public void finish_launchAppForUpdateAndIsSkipWfcActivationFalse_writeMetrics() {
+        Intent startIntent = new Intent(Intent.ACTION_MAIN);
+        startIntent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, SUB_ID);
+        startIntent.putExtra(
+                ActivityConstants.EXTRA_LAUNCH_CARRIER_APP, ActivityConstants.LAUNCH_APP_UPDATE);
+        mWfcActivationController =
+                new WfcActivationController(
+                        mContext,
+                        mMockActivationUi,
+                        mMockActivationApi,
+                        startIntent,
+                        mMockImsUtils,
+                        mMockMetricsLogger);
+
+        mWfcActivationController.finish();
+
+        verify(mMockMetricsLogger).write(anyInt(), anyInt());
     }
 
     @Test
@@ -582,5 +655,17 @@ public class WfcActivationControllerTest {
     private void verifyGeneralWaitingUiInOrder(InOrder inOrder, int title) {
         inOrder.verify(mMockActivationUi)
                 .showActivationUi(title, R.string.progress_text, true, 0, 0, 0);
+    }
+
+    private void setIsSkipWfcActivation(boolean isSkip) {
+        initializeCarrierConfig();
+        mCarrierConfig.putBoolean(KEY_SKIP_WFC_ACTIVATION_BOOL, isSkip);
+    }
+
+    private void initializeCarrierConfig() {
+        if (mCarrierConfig == null) {
+            mCarrierConfig = new PersistableBundle();
+            when(mMockCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(mCarrierConfig);
+        }
     }
 }

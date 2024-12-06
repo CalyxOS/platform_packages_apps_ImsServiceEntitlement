@@ -14,7 +14,8 @@
      limitations under the License.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.android.imsserviceentitlement.tests">
+    package="com.android.imsserviceentitlement">
+
     <application>
         <uses-library android:name="android.test.runner" />
     </application>

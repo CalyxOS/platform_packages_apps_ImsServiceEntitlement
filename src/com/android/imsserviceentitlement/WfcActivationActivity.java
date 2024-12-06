@@ -16,6 +16,7 @@
 
 package com.android.imsserviceentitlement;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.SystemProperties;
@@ -34,6 +35,8 @@ public class WfcActivationActivity extends FragmentActivity implements WfcActiva
     private static final String TAG = "IMSSE-WfcActivationActivity";
 
     // Dependencies
+    @SuppressWarnings("StaticFieldLeak")
+    private static WfcActivationController sWfcActivationController;
     private WfcActivationController mWfcActivationController;
     private WfcWebPortalFragment mWfcWebPortalFragment;
 
@@ -45,7 +48,13 @@ public class WfcActivationActivity extends FragmentActivity implements WfcActiva
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_wfc_activation);
 
-        int subId = ActivityConstants.getSubId(getIntent());
+        if (mWfcActivationController.isSkipWfcActivation()
+                && ActivityConstants.isActivationFlow(getIntent())) {
+            Log.d(TAG, "Skip wfc activation");
+            setResultAndFinish(Activity.RESULT_OK);
+            return;
+        }
+
         mWfcActivationController.startFlow();
     }
 
@@ -140,7 +149,7 @@ public class WfcActivationActivity extends FragmentActivity implements WfcActiva
     private void createDependeny() {
         Log.d(TAG, "Loading dependencies...");
         // TODO(b/177495634) Use DependencyInjector
-        if (mWfcActivationController == null) {
+        if (sWfcActivationController == null) {
             // Default initialization
             Log.d(TAG, "Default WfcActivationController initialization");
             Intent startIntent = this.getIntent();
@@ -150,7 +159,9 @@ public class WfcActivationActivity extends FragmentActivity implements WfcActiva
                             /* context = */ this,
                             /* wfcActivationUi = */ this,
                             new ImsEntitlementApi(this, subId),
-                            this.getIntent());
+                            startIntent);
+        } else {
+            mWfcActivationController = sWfcActivationController;
         }
     }
 }

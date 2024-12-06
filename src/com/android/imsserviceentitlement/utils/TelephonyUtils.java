@@ -40,6 +40,8 @@ public class TelephonyUtils {
             "imsserviceentitlement.entitlement_version_int";
     private static final String KEY_DEFAULT_SERVICE_ENTITLEMENT_STATUS_BOOL =
             "imsserviceentitlement.default_service_entitlement_status_bool";
+    private static final String KEY_SKIP_WFC_ACTIVATION_BOOL =
+            "imsserviceentitlement.skip_wfc_activation_bool";
 
     private final ConnectivityManager mConnectivityManager;
     private final TelephonyManager mTelephonyManager;
@@ -169,6 +171,14 @@ public class TelephonyUtils {
         return getConfigForSubId(context, subId).getInt(
                 KEY_ENTITLEMENT_VERSION_INT,
                 ENTITLEMENT_VERSION_TWO
+        );
+    }
+
+    /** Returns true if app can skip wfc activation and support emergency address update only. */
+    public static boolean isSkipWfcActivation(Context context, int subId) {
+        return getConfigForSubId(context, subId).getBoolean(
+                KEY_SKIP_WFC_ACTIVATION_BOOL,
+                false
         );
     }
 
