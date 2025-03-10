@@ -31,7 +31,8 @@ import static com.android.imsserviceentitlement.ImsServiceEntitlementStatsLog.IM
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.os.CountDownTimer;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -70,6 +71,7 @@ public class WfcActivationController {
     private final Intent mStartIntent;
     private final MetricsLogger mMetricsLogger;
     private final Context mContext;
+    private final Handler mMainThreadHandler;
 
     // States
     private int mEvaluateTimes = 0;
@@ -88,6 +90,7 @@ public class WfcActivationController {
         this.mTelephonyUtils = new TelephonyUtils(context, getSubId());
         this.mImsUtils = ImsUtils.getInstance(context, getSubId());
         this.mMetricsLogger = new MetricsLogger(mTelephonyUtils);
+        this.mMainThreadHandler = new Handler(Looper.getMainLooper());
     }
 
     @VisibleForTesting
@@ -97,7 +100,8 @@ public class WfcActivationController {
             ImsEntitlementApi imsEntitlementApi,
             Intent intent,
             ImsUtils imsUtils,
-            MetricsLogger metricsLogger) {
+            MetricsLogger metricsLogger,
+            Handler handler) {
         this.mContext = context;
         this.mStartIntent = intent;
         this.mActivationUi = wfcActivationUi;
@@ -105,6 +109,7 @@ public class WfcActivationController {
         this.mTelephonyUtils = new TelephonyUtils(context, getSubId());
         this.mImsUtils = imsUtils;
         this.mMetricsLogger = metricsLogger;
+        this.mMainThreadHandler = handler;
     }
 
     /** Indicates the controller to start WFC activation or emergency address update flow. */
@@ -127,7 +132,9 @@ public class WfcActivationController {
             return;
         }
         EntitlementUtils.entitlementCheck(
-                mImsEntitlementApi, result -> handleInitialEntitlementStatus(result));
+                mImsEntitlementApi,
+                result -> mMainThreadHandler.post(
+                        () -> handleInitialEntitlementStatus(result)));
     }
 
     /**
@@ -144,7 +151,9 @@ public class WfcActivationController {
     @MainThread
     public void reevaluateEntitlementStatus() {
         EntitlementUtils.entitlementCheck(
-                mImsEntitlementApi, result -> handleReevaluationEntitlementStatus(result));
+                mImsEntitlementApi,
+                result -> mMainThreadHandler.post(
+                        () -> handleReevaluationEntitlementStatus(result)));
     }
 
     /** The interface for handling the entitlement check result. */
@@ -314,9 +323,9 @@ public class WfcActivationController {
                 // Check again after 5s, max retry 6 times
                 if (mEvaluateTimes < ENTITLEMENT_STATUS_UPDATE_RETRY_MAX) {
                     mEvaluateTimes += 1;
-                    postDelay(
-                            getEntitlementStatusUpdateRetryIntervalMs(),
-                            this::reevaluateEntitlementStatus);
+                    mMainThreadHandler.postDelayed(
+                            this::reevaluateEntitlementStatus,
+                            getEntitlementStatusUpdateRetryIntervalMs());
                 } else {
                     mEvaluateTimes = 0;
                     showGeneralErrorUi();
@@ -357,22 +366,6 @@ public class WfcActivationController {
             showGeneralErrorUi();
             finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNEXPECTED_RESULT);
         }
-    }
-
-    /** Runs {@code action} on caller's thread after {@code delayMillis} ms. */
-    private static void postDelay(long delayMillis, Runnable action) {
-        new CountDownTimer(delayMillis, delayMillis + 100) {
-            // Use a countDownInterval bigger than millisInFuture so onTick never fires.
-            @Override
-            public void onTick(long millisUntilFinished) {
-                // Do nothing
-            }
-
-            @Override
-            public void onFinish() {
-                action.run();
-            }
-        }.start();
     }
 
     private void finishStatsLog(int result) {
