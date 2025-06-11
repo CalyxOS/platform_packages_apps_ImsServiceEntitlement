@@ -36,11 +36,16 @@ import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.PersistableBundle;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Message;
+import android.os.TestLooperManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
 import androidx.test.core.app.ApplicationProvider;
+import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.runner.AndroidJUnit4;
 
 import com.android.imsserviceentitlement.entitlement.EntitlementResult;
@@ -53,6 +58,7 @@ import com.android.imsserviceentitlement.utils.Executors;
 import com.android.imsserviceentitlement.utils.ImsUtils;
 import com.android.imsserviceentitlement.utils.MetricsLogger;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -86,10 +92,20 @@ public class WfcActivationControllerTest {
     private WfcActivationController mWfcActivationController;
     private Context mContext;
     private PersistableBundle mCarrierConfig;
+    private TestLooperManager mTestLooperManager;
+    private Handler mUiHandler;
+    private HandlerThread mUiHandlerThread;
 
     @Before
     public void setUp() throws Exception {
         mContext = spy(ApplicationProvider.getApplicationContext());
+
+        mUiHandlerThread = new HandlerThread("MockUiThread");
+        mUiHandlerThread.start();
+        mUiHandler = new Handler(mUiHandlerThread.getLooper());
+        mTestLooperManager =
+                InstrumentationRegistry.getInstrumentation()
+                        .acquireLooperManager(mUiHandlerThread.getLooper());
 
         when(mContext.getSystemService(CarrierConfigManager.class))
                 .thenReturn(mMockCarrierConfigManager);
@@ -102,6 +118,12 @@ public class WfcActivationControllerTest {
         Field field = Executors.class.getDeclaredField("sUseDirectExecutorForTest");
         field.setAccessible(true);
         field.set(null, true);
+    }
+
+    @After
+    public void tearDown() {
+        mTestLooperManager.release();
+        mUiHandlerThread.quit();
     }
 
     @Test
@@ -149,18 +171,7 @@ public class WfcActivationControllerTest {
     @Test
     public void finish_launchAppForActivateWithIsSkipWfcActivationTrue_notWriteMetrics() {
         setIsSkipWfcActivation(true);
-        Intent startIntent = new Intent(Intent.ACTION_MAIN);
-        startIntent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, SUB_ID);
-        startIntent.putExtra(
-                ActivityConstants.EXTRA_LAUNCH_CARRIER_APP, ActivityConstants.LAUNCH_APP_ACTIVATE);
-        mWfcActivationController =
-                new WfcActivationController(
-                        mContext,
-                        mMockActivationUi,
-                        mMockActivationApi,
-                        startIntent,
-                        mMockImsUtils,
-                        mMockMetricsLogger);
+        buildActivity(ActivityConstants.LAUNCH_APP_ACTIVATE);
 
         mWfcActivationController.finish();
 
@@ -170,18 +181,7 @@ public class WfcActivationControllerTest {
     @Test
     public void finish_launchAppForUpdateWithIsSkipWfcActivationTrue_writeMetrics() {
         setIsSkipWfcActivation(true);
-        Intent startIntent = new Intent(Intent.ACTION_MAIN);
-        startIntent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, SUB_ID);
-        startIntent.putExtra(
-                ActivityConstants.EXTRA_LAUNCH_CARRIER_APP, ActivityConstants.LAUNCH_APP_UPDATE);
-        mWfcActivationController =
-                new WfcActivationController(
-                        mContext,
-                        mMockActivationUi,
-                        mMockActivationApi,
-                        startIntent,
-                        mMockImsUtils,
-                        mMockMetricsLogger);
+        buildActivity(ActivityConstants.LAUNCH_APP_UPDATE);
 
         mWfcActivationController.finish();
 
@@ -190,18 +190,7 @@ public class WfcActivationControllerTest {
 
     @Test
     public void finish_launchAppForUpdateAndIsSkipWfcActivationFalse_writeMetrics() {
-        Intent startIntent = new Intent(Intent.ACTION_MAIN);
-        startIntent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, SUB_ID);
-        startIntent.putExtra(
-                ActivityConstants.EXTRA_LAUNCH_CARRIER_APP, ActivityConstants.LAUNCH_APP_UPDATE);
-        mWfcActivationController =
-                new WfcActivationController(
-                        mContext,
-                        mMockActivationUi,
-                        mMockActivationApi,
-                        startIntent,
-                        mMockImsUtils,
-                        mMockMetricsLogger);
+        buildActivity(ActivityConstants.LAUNCH_APP_UPDATE);
 
         mWfcActivationController.finish();
 
@@ -215,6 +204,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_ACTIVATE);
 
         mWfcActivationController.finishFlow();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         mOrderVerifier
                 .verify(mMockActivationUi)
@@ -250,20 +240,10 @@ public class WfcActivationControllerTest {
                                                 .build())
                                 .build());
         setNetworkConnected(false);
-        Intent intent = new Intent(Intent.ACTION_MAIN);
-        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, SUB_ID);
-        intent.putExtra(ActivityConstants.EXTRA_LAUNCH_CARRIER_APP,
-                ActivityConstants.LAUNCH_APP_UPDATE);
-        mWfcActivationController =
-                new WfcActivationController(
-                        mContext,
-                        mMockActivationUi,
-                        mMockActivationApi,
-                        null,
-                        mMockImsUtils,
-                        mMockMetricsLogger);
+        buildActivity(ActivityConstants.LAUNCH_APP_UPDATE);
 
         mWfcActivationController.finishFlow();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verify(mMockActivationUi).setResultAndFinish(eq(Activity.RESULT_OK));
     }
@@ -272,20 +252,10 @@ public class WfcActivationControllerTest {
     public void finish_startFlowForActivate_writeLoggerPurposeActivation() {
         when(mMockTelephonyManager.getSimCarrierId()).thenReturn(CARRIER_ID);
         when(mMockTelephonyManager.getSimSpecificCarrierId()).thenReturn(CARRIER_ID);
-        Intent intent = new Intent(Intent.ACTION_MAIN);
-        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, SUB_ID);
-        intent.putExtra(ActivityConstants.EXTRA_LAUNCH_CARRIER_APP,
-                ActivityConstants.LAUNCH_APP_ACTIVATE);
-        mWfcActivationController =
-                new WfcActivationController(
-                        mContext,
-                        mMockActivationUi,
-                        mMockActivationApi,
-                        intent,
-                        mMockImsUtils,
-                        mMockMetricsLogger);
+        buildActivity(ActivityConstants.LAUNCH_APP_ACTIVATE);
 
         mWfcActivationController.startFlow();
+        mTestLooperManager.execute(mTestLooperManager.next());
         mWfcActivationController.finish();
 
         verify(mMockMetricsLogger).start(eq(IMS_SERVICE_ENTITLEMENT_UPDATED__PURPOSE__ACTIVATION));
@@ -298,10 +268,6 @@ public class WfcActivationControllerTest {
     public void finish_entitlementResultWfcEntitled_writeLoggerAppResultSuccessful() {
         when(mMockTelephonyManager.getSimCarrierId()).thenReturn(CARRIER_ID);
         when(mMockTelephonyManager.getSimSpecificCarrierId()).thenReturn(CARRIER_ID);
-        Intent intent = new Intent(Intent.ACTION_MAIN);
-        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, SUB_ID);
-        intent.putExtra(ActivityConstants.EXTRA_LAUNCH_CARRIER_APP,
-                ActivityConstants.LAUNCH_APP_ACTIVATE);
         when(mMockActivationApi.checkEntitlementStatus())
                 .thenReturn(
                         EntitlementResult.builder(false)
@@ -313,16 +279,10 @@ public class WfcActivationControllerTest {
                                                 .setAddrStatus(AddrStatus.AVAILABLE)
                                                 .build())
                                 .build());
-        mWfcActivationController =
-                new WfcActivationController(
-                        mContext,
-                        mMockActivationUi,
-                        mMockActivationApi,
-                        intent,
-                        mMockImsUtils,
-                        mMockMetricsLogger);
+        buildActivity(ActivityConstants.LAUNCH_APP_ACTIVATE);
 
         mWfcActivationController.startFlow();
+        mTestLooperManager.execute(mTestLooperManager.next());
         mWfcActivationController.finish();
 
         verify(mMockMetricsLogger).start(eq(IMS_SERVICE_ENTITLEMENT_UPDATED__PURPOSE__ACTIVATION));
@@ -347,6 +307,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_ACTIVATE);
 
         mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verify(mMockActivationUi).setResultAndFinish(Activity.RESULT_OK);
     }
@@ -368,6 +329,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_ACTIVATE);
 
         mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verify(mMockActivationUi).showWebview(EMERGENCY_ADDRESS_WEB_URL,
                 EMERGENCY_ADDRESS_WEB_DATA);
@@ -389,6 +351,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_ACTIVATE);
 
         mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verify(mMockActivationUi).showWebview(EMERGENCY_ADDRESS_WEB_URL, null);
     }
@@ -406,6 +369,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_ACTIVATE);
 
         mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verifyErrorUi(R.string.activate_title, R.string.failure_contact_carrier);
     }
@@ -425,6 +389,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_ACTIVATE);
 
         mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verifyErrorUi(R.string.activate_title, R.string.wfc_activation_error);
     }
@@ -445,6 +410,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_ACTIVATE);
 
         mWfcActivationController.reevaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verify(mMockActivationUi).setResultAndFinish(Activity.RESULT_OK);
     }
@@ -464,6 +430,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_ACTIVATE);
 
         mWfcActivationController.reevaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verifyErrorUi(R.string.activate_title, R.string.wfc_activation_error);
     }
@@ -484,6 +451,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_UPDATE);
 
         mWfcActivationController.reevaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verify(mMockActivationUi).setResultAndFinish(eq(Activity.RESULT_OK));
     }
@@ -500,20 +468,10 @@ public class WfcActivationControllerTest {
                                         .build())
                         .build();
         when(mMockActivationApi.checkEntitlementStatus()).thenReturn(entitlementResult);
-        Intent intent = new Intent(Intent.ACTION_MAIN);
-        intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, SUB_ID);
-        intent.putExtra(ActivityConstants.EXTRA_LAUNCH_CARRIER_APP,
-                ActivityConstants.LAUNCH_APP_UPDATE);
-        mWfcActivationController =
-                new WfcActivationController(
-                        mContext,
-                        mMockActivationUi,
-                        mMockActivationApi,
-                        intent,
-                        mMockImsUtils,
-                        mMockMetricsLogger);
+        buildActivity(ActivityConstants.LAUNCH_APP_UPDATE);
 
         mWfcActivationController.reevaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verify(mMockImsUtils).turnOffWfc(any());
     }
@@ -533,6 +491,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_UPDATE);
 
         mWfcActivationController.reevaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verifyErrorUi(R.string.e911_title, R.string.address_update_error);
     }
@@ -555,6 +514,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_UPDATE);
 
         mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verify(mMockActivationUi).showWebview(EMERGENCY_ADDRESS_WEB_URL,
                 EMERGENCY_ADDRESS_WEB_DATA);
@@ -577,6 +537,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_SHOW_TC);
 
         mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verify(mMockActivationUi).showWebview(EMERGENCY_ADDRESS_WEB_URL, null);
     }
@@ -594,6 +555,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_UPDATE);
 
         mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verifyErrorUi(R.string.e911_title, R.string.failure_contact_carrier);
     }
@@ -611,6 +573,7 @@ public class WfcActivationControllerTest {
         buildActivity(ActivityConstants.LAUNCH_APP_UPDATE);
 
         mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
 
         verifyErrorUi(R.string.e911_title, R.string.address_update_error);
     }
@@ -620,8 +583,14 @@ public class WfcActivationControllerTest {
         intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, SUB_ID);
         intent.putExtra(ActivityConstants.EXTRA_LAUNCH_CARRIER_APP, extraLaunchCarrierApp);
         mWfcActivationController =
-                new WfcActivationController(mContext, mMockActivationUi, mMockActivationApi,
-                        intent);
+                new WfcActivationController(
+                        mContext,
+                        mMockActivationUi,
+                        mMockActivationApi,
+                        intent,
+                        mMockImsUtils,
+                        mMockMetricsLogger,
+                        mUiHandler);
     }
 
     private void setNetworkConnected(boolean isConnected) {
