@@ -143,6 +143,11 @@ public class WfcActivationController {
      */
     @MainThread
     public void finishFlow() {
+        if (isSkipWfcActivation() && !isActivationFlow()) {
+            finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__SUCCESSFUL);
+            mActivationUi.setResultAndFinish(Activity.RESULT_OK);
+            return;
+        }
         showGeneralWaitingUi();
         reevaluateEntitlementStatus();
     }
@@ -273,14 +278,22 @@ public class WfcActivationController {
     @MainThread
     private void handleEntitlementStatusForUpdating(EntitlementResult result) {
         Ts43VowifiStatus vowifiStatus = result.getVowifiStatus();
-        if (vowifiStatus.vowifiEntitled()) {
+        if (vowifiStatus.vowifiEntitled() ||  isSkipWfcActivation()) {
             int launchIntention = ActivityConstants.getLaunchIntention(mStartIntent);
             if (launchIntention == ActivityConstants.LAUNCH_APP_SHOW_TC) {
-                mActivationUi.showWebview(
-                        result.getTermsAndConditionsWebUrl(), /* postData= */ null);
+                if (!TextUtils.isEmpty(result.getTermsAndConditionsWebUrl())) {
+                    mActivationUi.showWebview(
+                            result.getTermsAndConditionsWebUrl(), /* postData= */ null);
+                    return;
+                }
+                Log.e(TAG, "Empty web URL for T&C. Show error UI.");
             } else {
-                mActivationUi.showWebview(
-                        result.getEmergencyAddressWebUrl(), result.getEmergencyAddressWebData());
+                if (!TextUtils.isEmpty(result.getEmergencyAddressWebUrl())) {
+                    mActivationUi.showWebview(result.getEmergencyAddressWebUrl(),
+                            result.getEmergencyAddressWebData());
+                    return;
+                }
+                Log.e(TAG, "Empty web URL for emergency address. Show error UI.");
             }
         } else {
             if (vowifiStatus.incompatible()) {
@@ -289,12 +302,13 @@ public class WfcActivationController {
                         () -> finishStatsLog(
                                 IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__INCOMPATIBLE)
                 );
-            } else {
-                Log.e(TAG, "Unexpected status. Show error UI.");
-                finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNEXPECTED_RESULT);
-                showGeneralErrorUi();
+                return;
             }
+            Log.e(TAG, "Unexpected status. Show error UI.");
         }
+
+        finishStatsLog(IMS_SERVICE_ENTITLEMENT_UPDATED__APP_RESULT__UNEXPECTED_RESULT);
+        showGeneralErrorUi();
     }
 
     @MainThread
