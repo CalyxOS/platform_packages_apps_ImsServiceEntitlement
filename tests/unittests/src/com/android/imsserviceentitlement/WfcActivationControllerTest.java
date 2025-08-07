@@ -85,6 +85,7 @@ public class WfcActivationControllerTest {
     private static final int SUB_ID = 1;
     private static final int CARRIER_ID = 1234;
     private static final String EMERGENCY_ADDRESS_WEB_URL = "webUrl";
+    private static final String EMERGENCY_ADDRESS_TC_URL = "tcUrl";
     private static final String EMERGENCY_ADDRESS_WEB_DATA = "webData";
     private static final String KEY_SKIP_WFC_ACTIVATION_BOOL =
             "imsserviceentitlement.skip_wfc_activation_bool";
@@ -246,6 +247,25 @@ public class WfcActivationControllerTest {
         mTestLooperManager.execute(mTestLooperManager.next());
 
         verify(mMockActivationUi).setResultAndFinish(eq(Activity.RESULT_OK));
+    }
+
+    @Test
+    public void finishFlow_skipWfcActivationTrueAndStartForUpdate_notReevaluateEntitlementStatus() {
+        setIsSkipWfcActivation(true);
+        buildActivity(ActivityConstants.LAUNCH_APP_UPDATE);
+
+        mWfcActivationController.finishFlow();
+        //mTestLooperManager.execute(mTestLooperManager.next());
+
+        verify(mMockActivationApi, never()).checkEntitlementStatus();
+        verify(mMockActivationUi).setResultAndFinish(eq(Activity.RESULT_OK));
+        verify(mMockActivationUi, never()).showActivationUi(
+                                                   R.string.activate_title,
+                                                   R.string.progress_text,
+                                                   true,
+                                                   0,
+                                                   0,
+                                                   0);
     }
 
     @Test
@@ -518,6 +538,96 @@ public class WfcActivationControllerTest {
 
         verify(mMockActivationUi).showWebview(EMERGENCY_ADDRESS_WEB_URL,
                 EMERGENCY_ADDRESS_WEB_DATA);
+    }
+
+    @Test
+    public void handleEntitlementStatusForShowTc_serviceEntitled_showWebview() {
+        when(mMockActivationApi.checkEntitlementStatus())
+                .thenReturn(
+                        EntitlementResult.builder(false)
+                                .setVowifiStatus(
+                                        Ts43VowifiStatus.builder()
+                                                .setEntitlementStatus(EntitlementStatus.ENABLED)
+                                                .setProvStatus(ProvStatus.PROVISIONED)
+                                                .setTcStatus(TcStatus.AVAILABLE)
+                                                .setAddrStatus(AddrStatus.AVAILABLE)
+                                                .build())
+                                .setTermsAndConditionsWebUrl(EMERGENCY_ADDRESS_TC_URL)
+                                .build());
+        buildActivity(ActivityConstants.LAUNCH_APP_SHOW_TC);
+
+        mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
+
+        verify(mMockActivationUi).showWebview(EMERGENCY_ADDRESS_TC_URL, null);
+    }
+
+    @Test
+    public void handleEntitlementStatusForUpdate_skipWfcActivationsAndNonEmptyWebUrl_showWebview() {
+        setIsSkipWfcActivation(true);
+        when(mMockActivationApi.checkEntitlementStatus())
+                .thenReturn(
+                        EntitlementResult.builder(false)
+                                .setVowifiStatus(Ts43VowifiStatus.builder().build())
+                                .setEmergencyAddressWebUrl(EMERGENCY_ADDRESS_WEB_URL)
+                                .setEmergencyAddressWebData(EMERGENCY_ADDRESS_WEB_DATA)
+                                .build());
+        buildActivity(ActivityConstants.LAUNCH_APP_UPDATE);
+
+        mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
+
+        verify(mMockActivationUi).showWebview(EMERGENCY_ADDRESS_WEB_URL,
+                EMERGENCY_ADDRESS_WEB_DATA);
+    }
+
+    @Test
+    public void handleEntitlementStatusForShowTc_skipWfcActivationsAndNonEmptyTcUrl_showWebview() {
+        setIsSkipWfcActivation(true);
+        when(mMockActivationApi.checkEntitlementStatus())
+                .thenReturn(
+                        EntitlementResult.builder(false)
+                                .setVowifiStatus(Ts43VowifiStatus.builder().build())
+                                .setTermsAndConditionsWebUrl(EMERGENCY_ADDRESS_TC_URL)
+                                .build());
+        buildActivity(ActivityConstants.LAUNCH_APP_SHOW_TC);
+
+        mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
+
+        verify(mMockActivationUi).showWebview(EMERGENCY_ADDRESS_TC_URL, null);
+    }
+
+    @Test
+    public void handleEntitlementStatusForUpdate_emptyWebUrl_showGenericErrorUi() {
+        setIsSkipWfcActivation(true);
+        when(mMockActivationApi.checkEntitlementStatus())
+                .thenReturn(
+                        EntitlementResult.builder(false)
+                                .setVowifiStatus(Ts43VowifiStatus.builder().build())
+                                .build());
+        buildActivity(ActivityConstants.LAUNCH_APP_UPDATE);
+
+        mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
+
+        verifyErrorUi(R.string.e911_title, R.string.address_update_error);
+    }
+
+    @Test
+    public void handleEntitlementStatusForShowTc_emptyTcUrl_showGenericErrorUi() {
+        setIsSkipWfcActivation(true);
+        when(mMockActivationApi.checkEntitlementStatus())
+                .thenReturn(
+                        EntitlementResult.builder(false)
+                                .setVowifiStatus(Ts43VowifiStatus.builder().build())
+                                .build());
+        buildActivity(ActivityConstants.LAUNCH_APP_SHOW_TC);
+
+        mWfcActivationController.evaluateEntitlementStatus();
+        mTestLooperManager.execute(mTestLooperManager.next());
+
+        verifyErrorUi(R.string.tos_title, R.string.show_terms_and_condition_error);
     }
 
     @Test
