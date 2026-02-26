@@ -72,6 +72,7 @@ android_app {
     ],
     resource_dirs: [],
     optimize: {
+        ignore_warnings: false,
         proguard_flags_files: ["proguard.flags"],
     },
     product_specific: true,
